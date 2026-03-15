@@ -5,7 +5,7 @@
 
 import { Platform } from "react-native";
 
-export const PRIMARY = "#F97316";
+export const PRIMARY = "#cff916";
 export const INCOME_COLOR = "#22C55E";
 export const EXPENSE_COLOR = "#EF4444";
 

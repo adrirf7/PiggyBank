@@ -76,7 +76,7 @@ export default function DashboardScreen() {
 
         {/* ── Balance Card ── */}
         <Animated.View entering={FadeInDown.duration(400).delay(50)} className="mx-5 mt-3">
-          <LinearGradient colors={["#63f184", "#1d9a3f"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+          <LinearGradient colors={["#d9f634", "#1d9a3f"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
             <View style={styles.circle1} />
             <View style={styles.circle2} />
             <Text style={styles.balanceLabel}>Saldo total</Text>
