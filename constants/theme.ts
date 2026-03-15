@@ -5,14 +5,14 @@
 
 import { Platform } from "react-native";
 
-export const PRIMARY = "#6366F1";
+export const PRIMARY = "#F97316";
 export const INCOME_COLOR = "#22C55E";
 export const EXPENSE_COLOR = "#EF4444";
 
 export const Colors = {
   light: {
     text: "#0F172A",
-    background: "#F0F4FF",
+    background: "#F8FAFC",
     card: "#FFFFFF",
     border: "#E2E8F0",
     muted: "#64748B",

@@ -1,10 +1,10 @@
 import { Category } from "@/types";
 
 export const INCOME_CATEGORIES: Category[] = [
-  { id: "salary", name: "Salario", icon: "briefcase-outline", color: "#6366F1", type: "income" },
+  { id: "salary", name: "Salario", icon: "briefcase-outline", color: "#F97316", type: "income" },
   { id: "freelance", name: "Freelance", icon: "laptop-outline", color: "#3B82F6", type: "income" },
   { id: "investment", name: "Inversión", icon: "trending-up-outline", color: "#F59E0B", type: "income" },
-  { id: "business", name: "Negocio", icon: "storefront-outline", color: "#8B5CF6", type: "income" },
+  { id: "business", name: "Negocio", icon: "storefront-outline", color: "#FBBF24", type: "income" },
   { id: "gift", name: "Regalo", icon: "gift-outline", color: "#EC4899", type: "income" },
   { id: "extra", name: "Extra", icon: "cash-outline", color: "#14B8A6", type: "income" },
   { id: "other_i", name: "Otros", icon: "ellipsis-horizontal-outline", color: "#059669", type: "income" },

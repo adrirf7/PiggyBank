@@ -66,17 +66,17 @@ export default function DashboardScreen() {
             <Text className="text-xs text-slate-400 dark:text-slate-500 capitalize">{todayCapitalized}</Text>
             <Text className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5">
               {greeting()}
-              {firstName ? `, ${firstName}` : ""} 👋
+              {firstName ? `, ${firstName}` : ""}
             </Text>
           </View>
-          <Pressable className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-slate-700 items-center justify-center" onPress={() => router.push("/add-transaction")}>
+          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: "#F9731620" }} onPress={() => router.push("/add-transaction")}>
             <Ionicons name="add" size={22} color={PRIMARY} />
           </Pressable>
         </View>
 
         {/* ── Balance Card ── */}
         <Animated.View entering={FadeInDown.duration(400).delay(50)} className="mx-5 mt-3">
-          <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+          <LinearGradient colors={["#63f184", "#1d9a3f"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
             <View style={styles.circle1} />
             <View style={styles.circle2} />
             <Text style={styles.balanceLabel}>Saldo total</Text>

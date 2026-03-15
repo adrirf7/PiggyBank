@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   fab: {
-    shadowColor: "#6366F1",
+    shadowColor: "#F97316",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

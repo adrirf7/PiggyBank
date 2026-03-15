@@ -26,7 +26,7 @@ const GOAL_ICONS = [
   "camera-outline",
 ];
 
-const GOAL_COLORS = ["#6366F1", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6", "#EC4899", "#14B8A6", "#A855F7", "#F97316", "#E11D48"];
+const GOAL_COLORS = ["#F97316", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6", "#EC4899", "#14B8A6", "#A855F7", "#0D9488", "#E11D48"];
 
 export default function AddGoalScreen() {
   const colorScheme = useColorScheme();
