@@ -29,15 +29,29 @@ export function filterByPeriod(transactions: Transaction[], period: Period): Tra
 }
 
 export function getTotalByType(transactions: Transaction[], type: "income" | "expense"): number {
-  return transactions.filter((t) => t.type === type).reduce((sum, t) => sum + t.amount, 0);
+  // Excluir transacciones de objetivos de ahorro
+  return transactions.filter((t) => t.type === type && !t.isGoalContribution).reduce((sum, t) => sum + t.amount, 0);
 }
 
 export function getBalance(transactions: Transaction[]): number {
+  // Balance = ingresos - gastos (sin incluir aportaciones a objetivos)
   return getTotalByType(transactions, "income") - getTotalByType(transactions, "expense");
 }
 
+/**
+ * Calcula el total de dinero ahorrado en objetivos de ahorro.
+ * Suma las aportaciones (income) y resta los retiros (expense) de objetivos.
+ */
+export function getTotalSaved(transactions: Transaction[]): number {
+  const goalTransactions = transactions.filter((t) => t.isGoalContribution);
+  const saved = goalTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+  const withdrawn = goalTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+  return saved - withdrawn;
+}
+
 export function getCategoryBreakdown(transactions: Transaction[], type: "income" | "expense"): { category: string; amount: number; percentage: number }[] {
-  const filtered = transactions.filter((t) => t.type === type);
+  // Excluir transacciones de objetivos de ahorro
+  const filtered = transactions.filter((t) => t.type === type && !t.isGoalContribution);
   const total = filtered.reduce((sum, t) => sum + t.amount, 0);
 
   const breakdown: Record<string, number> = {};

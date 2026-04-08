@@ -61,7 +61,7 @@ export default function SavingsGoalsScreen() {
                 cardBg={cardBg}
                 isDark={isDark}
                 onDelete={() => handleDelete(goal)}
-                onPress={() => router.push({ pathname: "/add-goal", params: { goalId: goal.id } })}
+                onPress={() => router.push({ pathname: "/manage-goal", params: { goalId: goal.id } })}
               />
             </Animated.View>
           ))

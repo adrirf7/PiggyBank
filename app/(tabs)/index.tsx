@@ -15,7 +15,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Period } from "@/types";
-import { filterByPeriod, formatCurrency, getBalance, getTotalByType } from "@/utils/calculations";
+import { filterByPeriod, formatCurrency, getBalance, getTotalByType, getTotalSaved } from "@/utils/calculations";
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "week", label: "Semana" },
@@ -38,6 +38,7 @@ export default function DashboardScreen() {
   const expense = getTotalByType(filtered, "expense");
   const balance = getBalance(transactions);
   const periodBalance = income - expense;
+  const totalSaved = getTotalSaved(transactions); // Dinero ahorrado en objetivos
 
   const totalGoalTarget = goals.reduce((sum, g) => sum + g.targetAmount, 0);
   const totalGoalCurrent = goals.reduce((sum, g) => sum + g.currentAmount, 0);
@@ -79,7 +80,7 @@ export default function DashboardScreen() {
           <LinearGradient colors={["#d9f634", "#1d9a3f"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
             <View style={styles.circle1} />
             <View style={styles.circle2} />
-            <Text style={styles.balanceLabel}>Saldo total</Text>
+            <Text style={styles.balanceLabel}>Saldo disponible</Text>
             <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
             <View style={styles.balanceRow}>
               <View style={styles.balanceStat}>
@@ -94,6 +95,13 @@ export default function DashboardScreen() {
                 <Text style={styles.balanceStatLabel}> Gastos totales</Text>
               </View>
               <Text style={styles.balanceStatValue}>{formatCurrency(getTotalByType(transactions, "expense"))}</Text>
+            </View>
+            <View style={[styles.balanceRow, { marginTop: 6 }]}>
+              <View style={styles.balanceStat}>
+                <Ionicons name="wallet" size={14} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.balanceStatLabel}> Dinero ahorrado</Text>
+              </View>
+              <Text style={styles.balanceStatValue}>{formatCurrency(totalSaved)}</Text>
             </View>
           </LinearGradient>
         </Animated.View>

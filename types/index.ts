@@ -10,6 +10,8 @@ export interface Transaction {
   description: string;
   date: string; // ISO date "YYYY-MM-DD"
   recurrence?: RecurrenceType;
+  goalId?: string; // ID del objetivo de ahorro relacionado
+  isGoalContribution?: boolean; // True si es aportación/retiro de objetivo
 }
 
 export interface Category {

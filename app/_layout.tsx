@@ -35,7 +35,7 @@ function AuthGate() {
 function RootNavigator() {
   const colorScheme = useColorScheme();
   useInitializeTheme();
-  
+
   return (
     <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -47,6 +47,8 @@ function RootNavigator() {
           <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="savings-goals" options={{ headerShown: false }} />
           <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false }} />
+          <Stack.Screen name="manage-goal" options={{ headerShown: false }} />
+          <Stack.Screen name="add-goal-contribution" options={{ presentation: "modal", headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
