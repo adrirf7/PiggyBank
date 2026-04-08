@@ -35,7 +35,16 @@ export function getTotalByType(transactions: Transaction[], type: "income" | "ex
 
 export function getBalance(transactions: Transaction[]): number {
   // Balance = ingresos - gastos (sin incluir aportaciones a objetivos)
-  return getTotalByType(transactions, "income") - getTotalByType(transactions, "expense");
+  const normalIncome = getTotalByType(transactions, "income");
+  const normalExpense = getTotalByType(transactions, "expense");
+
+  // El dinero aportado a objetivos sale del saldo disponible
+  const goalContributions = transactions.filter((t) => t.isGoalContribution && t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+
+  // El dinero retirado de objetivos vuelve al saldo disponible
+  const goalWithdrawals = transactions.filter((t) => t.isGoalContribution && t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+
+  return normalIncome - normalExpense - goalContributions + goalWithdrawals;
 }
 
 /**
