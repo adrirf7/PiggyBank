@@ -71,7 +71,7 @@ export default function RegisterScreen() {
           </LinearGradient>
 
           {/* ── Form card ── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.card, { backgroundColor: colors.card }]}>
             {/* Name */}
             <View style={styles.fieldWrap}>
               <Text style={[styles.label, { color: colors.muted }]}>Nombre</Text>
@@ -79,8 +79,8 @@ export default function RegisterScreen() {
                 style={[
                   styles.inputRow,
                   {
-                    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
                   },
                 ]}
               >
@@ -104,8 +104,8 @@ export default function RegisterScreen() {
                 style={[
                   styles.inputRow,
                   {
-                    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
                   },
                 ]}
               >
@@ -131,8 +131,8 @@ export default function RegisterScreen() {
                 style={[
                   styles.inputRow,
                   {
-                    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
                   },
                 ]}
               >
@@ -159,8 +159,8 @@ export default function RegisterScreen() {
                 style={[
                   styles.inputRow,
                   {
-                    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
                   },
                 ]}
               >

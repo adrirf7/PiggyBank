@@ -5,7 +5,7 @@
 
 import { Platform } from "react-native";
 
-export const PRIMARY = "#cff916";
+export const PRIMARY = "#c9e259";
 export const INCOME_COLOR = "#22C55E";
 export const EXPENSE_COLOR = "#EF4444";
 
@@ -21,6 +21,12 @@ export const Colors = {
     tabIconDefault: "#94A3B8",
     tabIconSelected: PRIMARY,
     tabBar: "#FFFFFF",
+    // Input backgrounds
+    inputBackground: "#F8FAFC",
+    inputBorder: "#E2E8F0",
+    // Button backgrounds
+    buttonSecondary: "#F1F5F9",
+    buttonSecondaryText: "#0F172A",
   },
   dark: {
     text: "#F1F5F9",
@@ -33,6 +39,12 @@ export const Colors = {
     tabIconDefault: "#64748B",
     tabIconSelected: PRIMARY,
     tabBar: "#1E293B",
+    // Input backgrounds
+    inputBackground: "#0F172A",
+    inputBorder: "#334155",
+    // Button backgrounds
+    buttonSecondary: "#334155",
+    buttonSecondaryText: "#F1F5F9",
   },
 };
 

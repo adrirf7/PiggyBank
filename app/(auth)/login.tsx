@@ -69,8 +69,8 @@ export default function LoginScreen() {
                 style={[
                   styles.inputRow,
                   {
-                    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
                   },
                 ]}
               >
@@ -96,8 +96,8 @@ export default function LoginScreen() {
                 style={[
                   styles.inputRow,
                   {
-                    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-                    borderColor: isDark ? "#334155" : "#E2E8F0",
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
                   },
                 ]}
               >

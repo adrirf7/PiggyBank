@@ -122,7 +122,7 @@ export default function EditProfileScreen() {
             {/* Name field */}
             <View style={styles.fieldWrap}>
               <Text style={[styles.label, { color: colors.muted }]}>Nombre</Text>
-              <View style={[styles.inputRow, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? "#334155" : "#E2E8F0" }]}>
+              <View style={[styles.inputRow, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                 <Ionicons name="person-outline" size={18} color={colors.muted} />
                 <TextInput
                   style={[styles.textInput, { color: colors.text }]}
@@ -140,7 +140,7 @@ export default function EditProfileScreen() {
             {/* Email (read-only) */}
             <View style={styles.fieldWrap}>
               <Text style={[styles.label, { color: colors.muted }]}>Correo electrónico</Text>
-              <View style={[styles.inputRow, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? "#2D3748" : "#E2E8F0", opacity: 0.7 }]}>
+              <View style={[styles.inputRow, { backgroundColor: colors.inputBackground, borderColor: colors.border, opacity: 0.7 }]}>
                 <Ionicons name="mail-outline" size={18} color={colors.muted} />
                 <Text style={[styles.textInput, { color: colors.muted }]} numberOfLines={1}>
                   {user?.email}

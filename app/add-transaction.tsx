@@ -86,7 +86,7 @@ export default function AddTransactionScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         {/* ── Header ── */}
         <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }} onPress={() => router.back()}>
+          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: colors.buttonSecondary }} onPress={() => router.back()}>
             <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
           <Text className="text-base font-bold text-slate-800 dark:text-slate-100">Nueva transacción</Text>
@@ -95,7 +95,7 @@ export default function AddTransactionScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           {/* ── Income / Expense Toggle ── */}
-          <View className="flex-row mx-5 mb-6 rounded-2xl overflow-hidden" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }}>
+          <View className="flex-row mx-5 mb-6 rounded-2xl overflow-hidden" style={{ backgroundColor: colors.buttonSecondary }}>
             {(["expense", "income"] as TransactionType[]).map((t) => (
               <Pressable
                 key={t}
@@ -139,7 +139,7 @@ export default function AddTransactionScreen() {
             <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Categoría</Text>
             <View className="flex-row flex-wrap gap-2">
               {categories.map((cat) => (
-                <CategoryChip key={cat.id} category={cat} selected={selectedCategory === cat.id} onPress={() => setSelectedCategory(cat.id)} />
+                <CategoryChip key={cat.id} category={cat} selected={selectedCategory === cat.id} onPress={() => setSelectedCategory(cat.id)} colors={colors} />
               ))}
             </View>
           </View>
@@ -150,7 +150,8 @@ export default function AddTransactionScreen() {
             <View className="rounded-2xl px-4 py-3.5 flex-row items-center gap-x-3" style={[styles.inputCard, { backgroundColor: cardBg }]}>
               <Ionicons name="pencil-outline" size={18} color={colors.muted} />
               <TextInput
-                className="flex-1 text-sm text-slate-800 dark:text-slate-100"
+                className="flex-1 text-sm"
+                style={{ color: colors.text }}
                 placeholder="Descripción (opcional)"
                 placeholderTextColor={colors.muted}
                 value={description}
@@ -168,7 +169,7 @@ export default function AddTransactionScreen() {
             >
               <View className="flex-row items-center gap-x-3">
                 <Ionicons name="calendar-outline" size={18} color={colors.muted} />
-                <Text className="text-sm text-slate-800 dark:text-slate-100">{dateLabel()}</Text>
+                <Text className="text-sm" style={{ color: colors.text }}>{dateLabel()}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.muted} />
             </Pressable>
@@ -219,11 +220,11 @@ export default function AddTransactionScreen() {
                   className="flex-row items-center px-3 py-2 rounded-full border"
                   style={{
                     backgroundColor: recurrence === opt.key ? activeColor + "20" : "transparent",
-                    borderColor: recurrence === opt.key ? activeColor : "#E2E8F0",
+                    borderColor: recurrence === opt.key ? activeColor : colors.border,
                   }}
                 >
-                  <Ionicons name={opt.icon as any} size={13} color={recurrence === opt.key ? activeColor : "#94A3B8"} style={{ marginRight: 4 }} />
-                  <Text className="text-xs font-medium" style={{ color: recurrence === opt.key ? activeColor : "#94A3B8" }}>
+                  <Ionicons name={opt.icon as any} size={13} color={recurrence === opt.key ? activeColor : colors.muted} style={{ marginRight: 4 }} />
+                  <Text className="text-xs font-medium" style={{ color: recurrence === opt.key ? activeColor : colors.muted }}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -241,18 +242,18 @@ export default function AddTransactionScreen() {
   );
 }
 
-function CategoryChip({ category, selected, onPress }: { category: Category; selected: boolean; onPress: () => void }) {
+function CategoryChip({ category, selected, onPress, colors }: { category: Category; selected: boolean; onPress: () => void; colors: any }) {
   return (
     <Pressable
       onPress={onPress}
       className="flex-row items-center gap-x-1.5 px-3 py-2 rounded-full border"
       style={{
         backgroundColor: selected ? category.color + "20" : "transparent",
-        borderColor: selected ? category.color : "#E2E8F0",
+        borderColor: selected ? category.color : colors.border,
       }}
     >
-      <Ionicons name={category.icon as any} size={15} color={selected ? category.color : "#94A3B8"} />
-      <Text className="text-xs font-medium" style={{ color: selected ? category.color : "#94A3B8" }}>
+      <Ionicons name={category.icon as any} size={15} color={selected ? category.color : colors.muted} />
+      <Text className="text-xs font-medium" style={{ color: selected ? category.color : colors.muted }}>
         {category.name}
       </Text>
     </Pressable>

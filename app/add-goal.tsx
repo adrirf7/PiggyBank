@@ -88,7 +88,7 @@ export default function AddGoalScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
-          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }} onPress={() => router.back()}>
+          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: colors.buttonSecondary }} onPress={() => router.back()}>
             <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
           <Text className="text-base font-bold text-slate-800 dark:text-slate-100">{isEditing ? "Editar objetivo" : "Nuevo objetivo"}</Text>

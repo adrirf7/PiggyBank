@@ -2,11 +2,13 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { View } from "react-native";
 import "react-native-reanimated";
 import "../global.css";
 
 import { AuthProvider, useAuth } from "@/context/auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useInitializeTheme } from "@/store/use-theme";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -32,19 +34,23 @@ function AuthGate() {
 
 function RootNavigator() {
   const colorScheme = useColorScheme();
+  useInitializeTheme();
+  
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <AuthGate />
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "fade" }} />
-        <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false }} />
-        <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false }} />
-        <Stack.Screen name="savings-goals" options={{ headerShown: false }} />
-        <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <AuthGate />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "fade" }} />
+          <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false }} />
+          <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false }} />
+          <Stack.Screen name="savings-goals" options={{ headerShown: false }} />
+          <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </View>
   );
 }
 

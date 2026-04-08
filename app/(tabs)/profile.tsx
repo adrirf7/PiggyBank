@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Tex
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import ThemeSelector from "@/components/theme-selector";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -113,8 +114,13 @@ export default function ProfileScreen() {
           <InfoRow icon="person-outline" label="Nombre" value={user?.displayName ?? "No especificado"} colors={colors} />
         </Animated.View>
 
+        {/* ── Theme Selector ── */}
+        <Animated.View entering={FadeInDown.duration(400).delay(250)}>
+          <ThemeSelector />
+        </Animated.View>
+
         {/* ── Sign out ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(250)} style={{ marginHorizontal: 20 }}>
+        <Animated.View entering={FadeInDown.duration(400).delay(300)} style={{ marginHorizontal: 20 }}>
           <Pressable style={[styles.signOutBtn, { opacity: signingOut ? 0.6 : 1 }]} onPress={handleSignOut} disabled={signingOut}>
             {signingOut ? (
               <ActivityIndicator color="#EF4444" />
