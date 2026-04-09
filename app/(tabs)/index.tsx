@@ -37,7 +37,7 @@ export default function DashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       setAnimationCycle((prev) => prev + 1);
-    }, [])
+    }, []),
   );
 
   const filtered = filterByPeriod(transactions, period);
@@ -128,7 +128,11 @@ export default function DashboardScreen() {
         </Animated.View>
 
         {/* ── Period selector ── */}
-        <Animated.View key={`period-selector-${animationCycle}`} entering={FadeInDown.duration(400).delay(100)} className="flex-row mx-5 mt-5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+        <Animated.View
+          key={`period-selector-${animationCycle}`}
+          entering={FadeInDown.duration(400).delay(100)}
+          className="flex-row mx-5 mt-5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1"
+        >
           {PERIODS.map(({ key, label }) => (
             <Pressable key={key} onPress={() => setPeriod(key)} className="flex-1 items-center py-2 rounded-lg" style={period === key ? { backgroundColor: PRIMARY } : undefined}>
               <Text className="text-sm font-semibold" style={{ color: period === key ? "#fff" : colors.muted }}>
