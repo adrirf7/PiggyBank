@@ -3,11 +3,12 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { SavingsGoal } from "@/types";
@@ -18,11 +19,12 @@ export default function SavingsGoalsScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { alert } = useAlert();
   const { goals, deleteGoal } = useSavingsGoalStore();
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
 
   const handleDelete = (goal: SavingsGoal) => {
-    Alert.alert("Eliminar objetivo", `¿Eliminar "${goal.name}"?`, [
+    alert("Eliminar objetivo", `¿Eliminar "${goal.name}"?`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: () => deleteGoal(goal.id) },
     ]);

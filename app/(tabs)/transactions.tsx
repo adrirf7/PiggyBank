@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TransactionItem from "@/components/transaction-item";
 import { getCategoryById } from "@/constants/categories";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTransactionStore } from "@/store/use-transactions";
 import { TransactionType } from "@/types";
@@ -26,6 +27,7 @@ export default function TransactionsScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { alert } = useAlert();
   const { transactions, deleteTransaction } = useTransactionStore();
 
   const [filter, setFilter] = useState<Filter>("all");
@@ -47,7 +49,7 @@ export default function TransactionsScreen() {
   const grouped = useMemo(() => groupTransactionsByDate(filtered), [filtered]);
 
   const handleDelete = (id: string) => {
-    Alert.alert("Eliminar transacción", "¿Estás seguro de que quieres eliminar esta transacción?", [
+    alert("Eliminar transacción", "¿Estás seguro de que quieres eliminar esta transacción?", [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Eliminar",

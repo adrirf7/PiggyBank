@@ -1,5 +1,6 @@
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/constants/categories";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Category, RecurrenceType, TransactionType } from "@/types";
@@ -9,7 +10,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const RECURRENCE_OPTIONS: { key: RecurrenceType; label: string; icon: string }[] = [
@@ -26,6 +27,7 @@ export default function AddTransactionScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { alert } = useAlert();
   const { addTransaction } = useTransactionStore();
 
   const [type, setType] = useState<TransactionType>("expense");
@@ -52,11 +54,11 @@ export default function AddTransactionScreen() {
     const numAmount = parseFloat(amount.replace(",", "."));
 
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert("Importe inválido", "Por favor, introduce un importe válido mayor que 0.");
+      alert("Importe inválido", "Por favor, introduce un importe válido mayor que 0.");
       return;
     }
     if (!selectedCategory) {
-      Alert.alert("Categoría requerida", "Por favor, selecciona una categoría.");
+      alert("Categoría requerida", "Por favor, selecciona una categoría.");
       return;
     }
 
@@ -169,7 +171,9 @@ export default function AddTransactionScreen() {
             >
               <View className="flex-row items-center gap-x-3">
                 <Ionicons name="calendar-outline" size={18} color={colors.muted} />
-                <Text className="text-sm" style={{ color: colors.text }}>{dateLabel()}</Text>
+                <Text className="text-sm" style={{ color: colors.text }}>
+                  {dateLabel()}
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.muted} />
             </Pressable>

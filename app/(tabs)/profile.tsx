@@ -2,13 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ThemeSelector from "@/components/theme-selector";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTransactionStore } from "@/store/use-transactions";
 import { formatCurrency, getTotalByType } from "@/utils/calculations";
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { alert } = useAlert();
   const { user, userProfile, signOut } = useAuth();
   const { transactions, loading } = useTransactionStore();
   const [signingOut, setSigningOut] = useState(false);
@@ -37,7 +39,7 @@ export default function ProfileScreen() {
     .toUpperCase();
 
   const handleSignOut = () => {
-    Alert.alert("Cerrar sesión", "¿Seguro que quieres salir de tu cuenta?", [
+    alert("Cerrar sesión", "¿Seguro que quieres salir de tu cuenta?", [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Cerrar sesión",

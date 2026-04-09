@@ -4,10 +4,11 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 
@@ -33,6 +34,7 @@ export default function AddGoalScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { alert } = useAlert();
   const { goalId } = useLocalSearchParams<{ goalId?: string }>();
   const { goals, addGoal, updateGoal } = useSavingsGoalStore();
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
@@ -53,15 +55,15 @@ export default function AddGoalScreen() {
     const current = parseFloat((currentAmount || "0").replace(",", "."));
 
     if (!name.trim()) {
-      Alert.alert("Nombre requerido", "Por favor, introduce un nombre para el objetivo.");
+      alert("Nombre requerido", "Por favor, introduce un nombre para el objetivo.");
       return;
     }
     if (!targetAmount || isNaN(target) || target <= 0) {
-      Alert.alert("Importe inválido", "Por favor, introduce un importe objetivo válido mayor que 0.");
+      alert("Importe inválido", "Por favor, introduce un importe objetivo válido mayor que 0.");
       return;
     }
     if (isNaN(current) || current < 0) {
-      Alert.alert("Importe inválido", "El importe ya ahorrado debe ser 0 o mayor.");
+      alert("Importe inválido", "El importe ya ahorrado debe ser 0 o mayor.");
       return;
     }
 

@@ -10,6 +10,8 @@ export interface Transaction {
   description: string;
   date: string; // ISO date "YYYY-MM-DD"
   recurrence?: RecurrenceType;
+  recurrenceMonthDay?: number; // For monthly/quarterly: which day of month (1-31)
+  recurrenceWeekDay?: number; // For weekly: which day of week (0-6, 0=Sunday)
   goalId?: string; // ID del objetivo de ahorro relacionado
   isGoalContribution?: boolean; // True si es aportación/retiro de objetivo
 }

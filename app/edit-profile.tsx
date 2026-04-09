@@ -3,12 +3,13 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function EditProfileScreen() {
@@ -17,6 +18,7 @@ export default function EditProfileScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const { user, userProfile, updateUserProfile } = useAuth();
+  const { alert } = useAlert();
 
   const [name, setName] = useState(user?.displayName ?? "");
   const [photoBase64, setPhotoBase64] = useState<string | null>(userProfile?.photoBase64 ?? null);
@@ -39,7 +41,7 @@ export default function EditProfileScreen() {
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso necesario", "Necesitamos acceso a tu galería para cambiar la foto.");
+      alert("Permiso necesario", "Necesitamos acceso a tu galería para cambiar la foto.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -55,7 +57,7 @@ export default function EditProfileScreen() {
   };
 
   const handleRemovePhoto = () => {
-    Alert.alert("Eliminar foto", "¿Eliminar la foto de perfil?", [
+    alert("Eliminar foto", "¿Eliminar la foto de perfil?", [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: () => setPhotoBase64(null) },
     ]);
@@ -63,7 +65,7 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert("Nombre requerido", "Por favor introduce tu nombre.");
+      alert("Nombre requerido", "Por favor introduce tu nombre.");
       return;
     }
     setSaving(true);
@@ -74,7 +76,7 @@ export default function EditProfileScreen() {
       });
       router.back();
     } catch {
-      Alert.alert("Error", "No se pudieron guardar los cambios. Inténtalo de nuevo.");
+      alert("Error", "No se pudieron guardar los cambios. Inténtalo de nuevo.");
     } finally {
       setSaving(false);
     }

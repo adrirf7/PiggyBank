@@ -1,8 +1,7 @@
 import { useAuth } from "@/context/auth";
 import { db } from "@/lib/firebase";
 import { Transaction } from "@/types";
-import { processRecurrentTransactions } from "@/utils/recurrence";
-import { addDoc, collection, deleteDoc, doc, getDoc, increment, onSnapshot, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, increment, onSnapshot, orderBy, query, writeBatch } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 
 export function useTransactionStore() {
@@ -22,6 +21,29 @@ export function useTransactionStore() {
   };
 
   /**
+   * Elimina una aportación/retiro a un objetivo y actualiza el monto del objetivo.
+   */
+  const deleteGoalContribution = async (id: string, transaction: Transaction) => {
+    if (!user || !transaction.goalId || !transaction.isGoalContribution) return;
+
+    const batch = writeBatch(db);
+
+    // 1. Eliminar la transacción
+    const transactionRef = doc(db, "users", user.uid, "transactions", id);
+    batch.delete(transactionRef);
+
+    // 2. Revertir el cambio en el currentAmount del objetivo
+    const goalRef = doc(db, "users", user.uid, "goals", transaction.goalId);
+    const amountChange = transaction.type === "income" ? -transaction.amount : transaction.amount;
+    batch.update(goalRef, {
+      currentAmount: increment(amountChange),
+    });
+
+    // 3. Ejecutar batch
+    await batch.commit();
+  };
+
+  /**
    * Añade una aportación o retiro a un objetivo de ahorro.
    * Actualiza automáticamente el currentAmount del objetivo usando batch write para atomicidad.
    */
@@ -32,6 +54,8 @@ export function useTransactionStore() {
     description: string;
     date: string;
     recurrence?: "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+    recurrenceMonthDay?: number;
+    recurrenceWeekDay?: number;
   }) => {
     if (!user) return;
 
@@ -47,6 +71,8 @@ export function useTransactionStore() {
       goalId: data.goalId,
       isGoalContribution: true,
       ...(data.recurrence && { recurrence: data.recurrence }),
+      ...(data.recurrenceMonthDay !== undefined && { recurrenceMonthDay: data.recurrenceMonthDay }),
+      ...(data.recurrenceWeekDay !== undefined && { recurrenceWeekDay: data.recurrenceWeekDay }),
     };
 
     const transactionRef = doc(collection(db, "users", user.uid, "transactions"));
@@ -60,6 +86,60 @@ export function useTransactionStore() {
     });
 
     // 3. Ejecutar batch
+    await batch.commit();
+  };
+
+  /**
+   * Actualiza una aportación o retiro a un objetivo de ahorro.
+   * Recalcula el cambio en currentAmount comparando el monto anterior con el nuevo.
+   */
+  const updateGoalContribution = async (
+    id: string,
+    oldTransaction: Transaction,
+    data: {
+      goalId: string;
+      type: "income" | "expense";
+      amount: number;
+      description: string;
+      date: string;
+      recurrence?: "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+      recurrenceMonthDay?: number;
+      recurrenceWeekDay?: number;
+    },
+  ) => {
+    if (!user || !oldTransaction.goalId || !oldTransaction.isGoalContribution) return;
+
+    const batch = writeBatch(db);
+
+    // 1. Actualizar la transacción
+    const transactionRef = doc(db, "users", user.uid, "transactions", id);
+    const transactionData: Omit<Transaction, "id"> = {
+      type: data.type,
+      amount: data.amount,
+      category: "savings-goal",
+      description: data.description,
+      date: data.date,
+      goalId: data.goalId,
+      isGoalContribution: true,
+      ...(data.recurrence && { recurrence: data.recurrence }),
+      ...(data.recurrenceMonthDay !== undefined && { recurrenceMonthDay: data.recurrenceMonthDay }),
+      ...(data.recurrenceWeekDay !== undefined && { recurrenceWeekDay: data.recurrenceWeekDay }),
+    };
+    batch.set(transactionRef, transactionData);
+
+    // 2. Calcular el cambio neto en el objetivo
+    // Primero revertir el cambio anterior, luego aplicar el nuevo
+    const oldAmountChange = oldTransaction.type === "income" ? -oldTransaction.amount : oldTransaction.amount;
+    const newAmountChange = data.type === "income" ? data.amount : -data.amount;
+    const netChange = oldAmountChange + newAmountChange;
+
+    // 3. Actualizar el currentAmount del objetivo
+    const goalRef = doc(db, "users", user.uid, "goals", data.goalId);
+    batch.update(goalRef, {
+      currentAmount: increment(netChange),
+    });
+
+    // 4. Ejecutar batch
     await batch.commit();
   };
 
@@ -109,5 +189,5 @@ export function useTransactionStore() {
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [transactions, loading, user]);
 
-  return { transactions, loading, addTransaction, deleteTransaction, addGoalContribution };
+  return { transactions, loading, addTransaction, deleteTransaction, addGoalContribution, deleteGoalContribution, updateGoalContribution };
 }

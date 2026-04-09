@@ -1,5 +1,6 @@
 import { getCategoryById } from "@/constants/categories";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { Transaction } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,8 +16,23 @@ interface Props {
 export default function TransactionItem({ transaction, onDelete }: Props) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const category = getCategoryById(transaction.category);
+  const { goals } = useSavingsGoalStore();
   const isIncome = transaction.type === "income";
+
+  // For goal contributions, use the goal's icon and color
+  let category = getCategoryById(transaction.category);
+  let displayIcon = category?.icon ?? "help-circle-outline";
+  let displayColor = category?.color ?? "#64748B";
+  let displayName = category?.name ?? "Sin categoría";
+
+  if (transaction.isGoalContribution && transaction.goalId) {
+    const goal = goals.find((g) => g.id === transaction.goalId);
+    if (goal) {
+      displayIcon = goal.icon || "trophy-outline";
+      displayColor = goal.color;
+      displayName = goal.name;
+    }
+  }
 
   return (
     <Animated.View entering={FadeInRight.duration(300)} exiting={SlideOutLeft.duration(250)}>
@@ -32,16 +48,16 @@ export default function TransactionItem({ transaction, onDelete }: Props) {
         onLongPress={onDelete ? () => onDelete(transaction.id) : undefined}
       >
         {/* Category icon bubble */}
-        <View className="w-11 h-11 rounded-full items-center justify-center mr-3" style={{ backgroundColor: (category?.color ?? "#64748B") + "20" }}>
-          <Ionicons name={(category?.icon ?? "help-circle-outline") as any} size={22} color={category?.color ?? "#64748B"} />
+        <View className="w-11 h-11 rounded-full items-center justify-center mr-3" style={{ backgroundColor: displayColor + "20" }}>
+          <Ionicons name={displayIcon as any} size={22} color={displayColor} />
         </View>
 
         {/* Details */}
         <View className="flex-1">
           <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100" numberOfLines={1}>
-            {transaction.description || category?.name || "Sin descripción"}
+            {transaction.description || displayName || "Sin descripción"}
           </Text>
-          <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{category?.name ?? "Sin categoría"}</Text>
+          <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{displayName}</Text>
         </View>
 
         {/* Amount */}

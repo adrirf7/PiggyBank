@@ -3,17 +3,36 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { Colors } from "@/constants/theme";
+import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
-import { Transaction, SavingsGoal } from "@/types";
+import { SavingsGoal, Transaction } from "@/types";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(amount);
+}
+
+function getRecurrenceLabel(recurrence?: string): string {
+  switch (recurrence) {
+    case "daily":
+      return "Diario";
+    case "weekly":
+      return "Semanal";
+    case "monthly":
+      return "Mensual";
+    case "quarterly":
+      return "Trimestral";
+    case "yearly":
+      return "Anual";
+    default:
+      return "Una vez";
+  }
 }
 
 export default function ManageGoalScreen() {
@@ -21,14 +40,27 @@ export default function ManageGoalScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { alert } = useAlert();
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const { goals, deleteGoal } = useSavingsGoalStore();
-  const { transactions } = useTransactionStore();
+  const { transactions, deleteGoalContribution } = useTransactionStore();
 
   const goal = useMemo(() => goals.find((g) => g.id === goalId), [goals, goalId]);
+  
+  // Separar transacciones recurrentes y no recurrentes
   const goalTransactions = useMemo(
     () => transactions.filter((t) => t.goalId === goalId && t.isGoalContribution).sort((a, b) => b.date.localeCompare(a.date)),
     [transactions, goalId],
+  );
+
+  const recurringContributions = useMemo(
+    () => goalTransactions.filter((t) => t.recurrence && t.recurrence !== "none"),
+    [goalTransactions],
+  );
+
+  const nonRecurringTransactions = useMemo(
+    () => goalTransactions.filter((t) => !t.recurrence || t.recurrence === "none"),
+    [goalTransactions],
   );
 
   if (!goal) {
@@ -45,7 +77,7 @@ export default function ManageGoalScreen() {
   const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
 
   const handleDelete = () => {
-    Alert.alert("Eliminar objetivo", `¿Estás seguro de eliminar "${goal.name}"?`, [
+    alert("Eliminar objetivo", `¿Estás seguro de eliminar "${goal.name}"?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Eliminar",
@@ -68,7 +100,7 @@ export default function ManageGoalScreen() {
 
   const handleRemoveMoney = () => {
     if (goal.currentAmount <= 0) {
-      Alert.alert("Sin fondos", "Este objetivo no tiene dinero para retirar.");
+      alert("Sin fondos", "Este objetivo no tiene dinero para retirar.");
       return;
     }
     router.push({ pathname: "/add-goal-contribution", params: { goalId: goal.id, type: "remove" } });
@@ -76,22 +108,50 @@ export default function ManageGoalScreen() {
 
   const handleRemoveAll = () => {
     if (goal.currentAmount <= 0) {
-      Alert.alert("Sin fondos", "Este objetivo no tiene dinero para retirar.");
+      alert("Sin fondos", "Este objetivo no tiene dinero para retirar.");
       return;
     }
 
-    Alert.alert(
-      "Retirar todo",
-      `¿Estás seguro de retirar todo el dinero (${formatCurrency(goal.currentAmount)}) del objetivo "${goal.name}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Retirar todo",
-          style: "destructive",
-          onPress: () => router.push({ pathname: "/add-goal-contribution", params: { goalId: goal.id, type: "remove", amount: goal.currentAmount.toString() } }),
+    alert("Retirar todo", `¿Estás seguro de retirar todo el dinero (${formatCurrency(goal.currentAmount)}) del objetivo "${goal.name}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Retirar todo",
+        style: "destructive",
+        onPress: () => router.push({ pathname: "/add-goal-contribution", params: { goalId: goal.id, type: "remove", amount: goal.currentAmount.toString() } }),
+      },
+    ]);
+  };
+
+  const handleEditRecurringContribution = (transaction: Transaction) => {
+    router.push({
+      pathname: "/add-goal-contribution",
+      params: {
+        goalId: goal.id,
+        type: transaction.type === "income" ? "add" : "remove",
+        transactionId: transaction.id,
+        amount: transaction.amount.toString(),
+        description: transaction.description,
+      },
+    });
+  };
+
+  const handleDeleteRecurringContribution = (transaction: Transaction) => {
+    const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
+    alert("Eliminar aportación recurrente", `¿Eliminar la aportación de ${formatCurrency(transaction.amount)} (${recurrenceLabel})?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteGoalContribution(transaction.id, transaction);
+          } catch (error) {
+            alert("Error", "No se pudo eliminar la aportación recurrente.");
+            console.error(error);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   return (
@@ -200,16 +260,53 @@ export default function ManageGoalScreen() {
           )}
         </View>
 
+        {/* Recurring Contributions */}
+        {recurringContributions.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+            <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Aportaciones recurrentes</Text>
+            <View className="rounded-2xl overflow-hidden mb-5" style={{ backgroundColor: cardBg }}>
+              {recurringContributions.map((tx, idx) => (
+                <RecurringContributionItem
+                  key={tx.id}
+                  transaction={tx}
+                  goal={goal}
+                  isDark={isDark}
+                  cardBg={cardBg}
+                  isFirst={idx === 0}
+                  onEdit={handleEditRecurringContribution}
+                  onDelete={handleDeleteRecurringContribution}
+                />
+              ))}
+            </View>
+          </Animated.View>
+        )}
+
         {/* Transaction History */}
         <View>
           <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Historial de movimientos</Text>
-          {goalTransactions.length === 0 ? (
+          {nonRecurringTransactions.length === 0 && recurringContributions.length === 0 ? (
             <View className="rounded-2xl p-6 items-center" style={{ backgroundColor: cardBg }}>
               <Ionicons name="file-tray-outline" size={40} color={colors.muted} />
               <Text className="text-sm text-slate-400 dark:text-slate-500 mt-2">Sin movimientos aún</Text>
             </View>
+          ) : nonRecurringTransactions.length === 0 ? (
+            <View className="rounded-2xl p-6 items-center" style={{ backgroundColor: cardBg }}>
+              <Ionicons name="file-tray-outline" size={40} color={colors.muted} />
+              <Text className="text-sm text-slate-400 dark:text-slate-500 mt-2">Sin movimientos puntuales</Text>
+            </View>
           ) : (
-            goalTransactions.map((tx) => <TransactionItem key={tx.id} transaction={tx} goal={goal} isDark={isDark} cardBg={cardBg} />)
+            <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: cardBg }}>
+              {nonRecurringTransactions.map((tx, idx) => (
+                <TransactionItem
+                  key={tx.id}
+                  transaction={tx}
+                  goal={goal}
+                  isDark={isDark}
+                  cardBg={cardBg}
+                  isFirst={idx === 0}
+                />
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -217,11 +314,90 @@ export default function ManageGoalScreen() {
   );
 }
 
-function TransactionItem({ transaction, goal, isDark, cardBg }: { transaction: Transaction; goal: SavingsGoal; isDark: boolean; cardBg: string }) {
+function RecurringContributionItem({
+  transaction,
+  goal,
+  isDark,
+  cardBg,
+  isFirst,
+  onEdit,
+  onDelete,
+}: {
+  transaction: Transaction;
+  goal: SavingsGoal;
+  isDark: boolean;
+  cardBg: string;
+  isFirst: boolean;
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
+}) {
+  const isAdd = transaction.type === "income";
+  const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
+
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(400)}
+      style={!isFirst ? { borderTopWidth: 1, borderTopColor: isDark ? "#334155" : "#F1F5F9" } : {}}
+    >
+      <Pressable
+        className="p-4 flex-row items-center justify-between active:opacity-70"
+        style={{
+          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+        }}
+        onPress={() => onEdit(transaction)}
+      >
+        <View className="flex-1 flex-row items-center">
+          <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: goal.color + "20" }}>
+            <Ionicons name={goal.icon as any} size={18} color={goal.color} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              {isAdd ? "Aportación" : "Retiro"} ({recurrenceLabel})
+            </Text>
+            <Text className={`text-xs mt-0.5 ${isAdd ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"} font-semibold`}>
+              {isAdd ? "+" : "-"}
+              {formatCurrency(transaction.amount)}
+            </Text>
+            {transaction.description && <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">{transaction.description}</Text>}
+          </View>
+        </View>
+        <View className="flex-row items-center gap-2 ml-2">
+          <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: goal.color + "20" }}>
+            <Ionicons name="pencil" size={14} color={goal.color} />
+          </View>
+          <Pressable
+            className="w-8 h-8 rounded-full items-center justify-center active:opacity-70"
+            style={{ backgroundColor: "#EF444420" }}
+            onPress={() => onDelete(transaction)}
+          >
+            <Ionicons name="close" size={16} color="#EF4444" />
+          </Pressable>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function TransactionItem({
+  transaction,
+  goal,
+  isDark,
+  cardBg,
+  isFirst,
+}: {
+  transaction: Transaction;
+  goal: SavingsGoal;
+  isDark: boolean;
+  cardBg: string;
+  isFirst: boolean;
+}) {
   const isAdd = transaction.type === "income";
 
   return (
-    <View className="rounded-2xl p-3.5 flex-row items-center mb-2" style={[styles.txCard, { backgroundColor: cardBg }]}>
+    <View
+      className="p-3.5 flex-row items-center"
+      style={[!isFirst && { borderTopWidth: 1, borderTopColor: isDark ? "#334155" : "#F1F5F9" }, styles.txCard]}
+    >
       <View className="w-9 h-9 rounded-full items-center justify-center mr-3" style={{ backgroundColor: goal.color + "20" }}>
         <Ionicons name={goal.icon as any} size={18} color={goal.color} />
       </View>
@@ -229,7 +405,6 @@ function TransactionItem({ transaction, goal, isDark, cardBg }: { transaction: T
         <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100">{isAdd ? "Aportación" : "Retiro"}</Text>
         <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
           {format(parseISO(transaction.date), "d MMM yyyy", { locale: es })}
-          {transaction.recurrence && transaction.recurrence !== "none" && " • Recurrente"}
         </Text>
         {transaction.description && <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{transaction.description}</Text>}
       </View>

@@ -6,6 +6,7 @@ import { View } from "react-native";
 import "react-native-reanimated";
 import "../global.css";
 
+import { AlertDialogProvider } from "@/components/alert-dialog";
 import { AuthProvider, useAuth } from "@/context/auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useInitializeTheme } from "@/store/use-theme";
@@ -39,18 +40,20 @@ function RootNavigator() {
   return (
     <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <AuthGate />
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "fade" }} />
-          <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false }} />
-          <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false }} />
-          <Stack.Screen name="savings-goals" options={{ headerShown: false }} />
-          <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false }} />
-          <Stack.Screen name="manage-goal" options={{ headerShown: false }} />
-          <Stack.Screen name="add-goal-contribution" options={{ presentation: "modal", headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
+        <AlertDialogProvider>
+          <AuthGate />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "fade" }} />
+            <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false }} />
+            <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false }} />
+            <Stack.Screen name="savings-goals" options={{ headerShown: false }} />
+            <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false }} />
+            <Stack.Screen name="manage-goal" options={{ headerShown: false }} />
+            <Stack.Screen name="add-goal-contribution" options={{ presentation: "modal", headerShown: false }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </AlertDialogProvider>
       </ThemeProvider>
     </View>
   );
@@ -59,7 +62,9 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <AlertDialogProvider>
+        <RootNavigator />
+      </AlertDialogProvider>
     </AuthProvider>
   );
 }
