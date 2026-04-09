@@ -14,12 +14,12 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: PRIMARY,
-        tabBarInactiveTintColor: colors.tabIconDefault,
-        tabBarStyle: {
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: PRIMARY,
+          tabBarInactiveTintColor: colors.tabIconDefault,
+          tabBarStyle: {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,

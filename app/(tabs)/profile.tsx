@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,6 +23,13 @@ export default function ProfileScreen() {
   const { user, userProfile, signOut } = useAuth();
   const { transactions, loading } = useTransactionStore();
   const [signingOut, setSigningOut] = useState(false);
+  const [animationCycle, setAnimationCycle] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setAnimationCycle((prev) => prev + 1);
+    }, [])
+  );
 
   const totalIncome = getTotalByType(transactions, "income");
   const totalExpense = getTotalByType(transactions, "expense");
@@ -59,7 +66,7 @@ export default function ProfileScreen() {
         <LinearGradient colors={["#F97316", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <View style={styles.circle1} />
           <View style={styles.circle2} />
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.profileWrap}>
+          <Animated.View key={`profile-header-${animationCycle}`} entering={FadeInDown.duration(400).delay(0)} style={styles.profileWrap}>
             <Pressable onPress={() => router.push("/edit-profile")} style={styles.avatar}>
               {userProfile?.photoBase64 ? (
                 <Image source={{ uri: `data:image/jpeg;base64,${userProfile.photoBase64}` }} style={styles.avatarImage} />
@@ -78,7 +85,7 @@ export default function ProfileScreen() {
 
         {/* ── Stats ── */}
         {!loading && (
-          <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.statsRow}>
+          <Animated.View key={`profile-stats-${animationCycle}`} entering={FadeInDown.duration(400).delay(80)} style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: cardBg }]}>
               <Text style={[styles.statValue, { color: INCOME_COLOR }]}>{formatCurrency(totalIncome)}</Text>
               <Text style={[styles.statLabel, { color: colors.muted }]}>Ingresos totales</Text>
@@ -92,7 +99,7 @@ export default function ProfileScreen() {
 
         {/* ── Summary card ── */}
         {!loading && (
-          <Animated.View entering={FadeInDown.duration(400).delay(150)} style={[styles.summaryCard, { backgroundColor: cardBg }]}>
+          <Animated.View key={`profile-summary-${animationCycle}`} entering={FadeInDown.duration(400).delay(120)} style={[styles.summaryCard, { backgroundColor: cardBg }]}>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.muted }]}>Saldo neto</Text>
               <Text style={[styles.summaryValue, { color: balance >= 0 ? INCOME_COLOR : EXPENSE_COLOR }]}>
@@ -109,7 +116,7 @@ export default function ProfileScreen() {
         )}
 
         {/* ── Account info ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(200)} style={[styles.section, { backgroundColor: cardBg }]}>
+        <Animated.View key={`profile-account-${animationCycle}`} entering={FadeInDown.duration(400).delay(160)} style={[styles.section, { backgroundColor: cardBg }]}>
           <Text style={[styles.sectionTitle, { color: colors.muted }]}>Cuenta</Text>
           <InfoRow icon="mail-outline" label="Correo electrónico" value={user?.email ?? "—"} colors={colors} />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -117,12 +124,12 @@ export default function ProfileScreen() {
         </Animated.View>
 
         {/* ── Theme Selector ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(250)}>
+        <Animated.View key={`profile-theme-${animationCycle}`} entering={FadeInDown.duration(400).delay(210)}>
           <ThemeSelector />
         </Animated.View>
 
         {/* ── Sign out ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(300)} style={{ marginHorizontal: 20 }}>
+        <Animated.View key={`profile-signout-${animationCycle}`} entering={FadeInDown.duration(400).delay(250)} style={{ marginHorizontal: 20 }}>
           <Pressable style={[styles.signOutBtn, { opacity: signingOut ? 0.6 : 1 }]} onPress={handleSignOut} disabled={signingOut}>
             {signingOut ? (
               <ActivityIndicator color="#EF4444" />

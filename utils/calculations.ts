@@ -1,5 +1,20 @@
 import { Period, Transaction } from "@/types";
-import { addDays, endOfMonth, endOfWeek, endOfYear, format, getDaysInMonth, isWithinInterval, parseISO, startOfMonth, startOfWeek, startOfYear, subMonths } from "date-fns";
+import {
+    addDays,
+    endOfMonth,
+    endOfWeek,
+    endOfYear,
+    format,
+    getDaysInMonth,
+    isWithinInterval,
+    parseISO,
+    startOfMonth,
+    startOfWeek,
+    startOfYear,
+    subMonths,
+    subWeeks,
+    subYears,
+} from "date-fns";
 import { es } from "date-fns/locale";
 
 export function filterByPeriod(transactions: Transaction[], period: Period): Transaction[] {
@@ -26,6 +41,59 @@ export function filterByPeriod(transactions: Transaction[], period: Period): Tra
     const date = parseISO(t.date);
     return isWithinInterval(date, { start, end });
   });
+}
+
+export function filterByPreviousPeriod(transactions: Transaction[], period: Period): Transaction[] {
+  const now = new Date();
+  let start: Date;
+  let end: Date;
+
+  switch (period) {
+    case "week": {
+      const prevWeekEnd = startOfWeek(now, { weekStartsOn: 1 });
+      const prevWeekStart = subWeeks(prevWeekEnd, 1);
+      start = prevWeekStart;
+      end = prevWeekEnd;
+      break;
+    }
+    case "month": {
+      const prevMonth = subMonths(now, 1);
+      start = startOfMonth(prevMonth);
+      end = endOfMonth(prevMonth);
+      break;
+    }
+    case "year": {
+      const prevYear = subYears(now, 1);
+      start = startOfYear(prevYear);
+      end = endOfYear(prevYear);
+      break;
+    }
+  }
+
+  return transactions.filter((t) => {
+    const date = parseISO(t.date);
+    return isWithinInterval(date, { start, end });
+  });
+}
+
+export interface PercentageChange {
+  percentage: number;
+  isPositive: boolean;
+}
+
+export function calculatePercentageChange(current: number, previous: number): PercentageChange {
+  if (previous === 0) {
+    return {
+      percentage: current > 0 ? 100 : 0,
+      isPositive: current > 0,
+    };
+  }
+
+  const change = ((current - previous) / previous) * 100;
+  return {
+    percentage: Math.abs(change),
+    isPositive: change >= 0,
+  };
 }
 
 export function getTotalByType(transactions: Transaction[], type: "income" | "expense"): number {

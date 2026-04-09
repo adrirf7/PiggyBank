@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,7 +12,15 @@ import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme"
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Period } from "@/types";
-import { filterByPeriod, formatCurrency, getCategoryBreakdown, getChartDataForPeriod, getTotalByType } from "@/utils/calculations";
+import {
+    calculatePercentageChange,
+    filterByPeriod,
+    filterByPreviousPeriod,
+    formatCurrency,
+    getCategoryBreakdown,
+    getChartDataForPeriod,
+    getTotalByType,
+} from "@/utils/calculations";
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "week", label: "Semana" },
@@ -23,12 +32,30 @@ export default function AnalyticsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
+  const router = useRouter();
   const { transactions } = useTransactionStore();
   const [period, setPeriod] = useState<Period>("month");
+  const [animationCycle, setAnimationCycle] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setAnimationCycle((prev) => prev + 1);
+    }, [])
+  );
 
   const filtered = useMemo(() => filterByPeriod(transactions, period), [transactions, period]);
+  const previousFiltered = useMemo(() => filterByPreviousPeriod(transactions, period), [transactions, period]);
   const income = getTotalByType(filtered, "income");
   const expense = getTotalByType(filtered, "expense");
+  const previousIncome = getTotalByType(previousFiltered, "income");
+  const previousExpense = getTotalByType(previousFiltered, "expense");
+  const incomeChange = calculatePercentageChange(income, previousIncome);
+  const expenseChange = calculatePercentageChange(expense, previousExpense);
+  
+  // Diferencias en dinero
+  const incomeDifference = income - previousIncome;
+  const expenseDifference = expense - previousExpense;
+  
   const balance = income - expense;
 
   const expenseBreakdown = useMemo(() => getCategoryBreakdown(filtered, "expense"), [filtered]);
@@ -59,7 +86,7 @@ export default function AnalyticsScreen() {
         </View>
 
         {/* ── Period selector ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(50)} className="flex-row mx-5 mb-5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+        <Animated.View key={`period-selector-${animationCycle}`} entering={FadeInDown.duration(400).delay(0)} className="flex-row mx-5 mb-5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
           {PERIODS.map(({ key, label }) => (
             <Pressable key={key} onPress={() => setPeriod(key)} className="flex-1 items-center py-2 rounded-lg" style={period === key ? { backgroundColor: PRIMARY } : undefined}>
               <Text className="text-sm font-semibold" style={{ color: period === key ? "#fff" : colors.muted }}>
@@ -70,14 +97,34 @@ export default function AnalyticsScreen() {
         </Animated.View>
 
         {/* ── Summary cards ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(100)} className="flex-row mx-5 gap-x-3 mb-4">
-          <SummaryCard label="Ingresos" amount={income} color={INCOME_COLOR} icon="arrow-down" cardBg={cardBg} />
-          <SummaryCard label="Gastos" amount={expense} color={EXPENSE_COLOR} icon="arrow-up" cardBg={cardBg} />
+        <Animated.View key={`summary-cards-${animationCycle}`} entering={FadeInDown.duration(400).delay(80)} className="flex-row mx-5 gap-x-3 mb-4">
+          <SummaryCard 
+            label="Ingresos" 
+            amount={income} 
+            color={INCOME_COLOR} 
+            icon="arrow-down" 
+            cardBg={cardBg} 
+            percentageChange={incomeChange}
+            difference={incomeDifference}
+            onPress={() => router.push("/transactions?filter=income")} 
+          />
+          <SummaryCard 
+            label="Gastos" 
+            amount={expense} 
+            color={EXPENSE_COLOR} 
+            icon="arrow-up" 
+            cardBg={cardBg} 
+            percentageChange={expenseChange}
+            difference={expenseDifference}
+            isExpense={true} 
+            onPress={() => router.push("/transactions?filter=expense")} 
+          />
         </Animated.View>
 
         {/* ── Balance banner ── */}
         <Animated.View
-          entering={FadeInDown.duration(400).delay(150)}
+          key={`balance-banner-${animationCycle}`}
+          entering={FadeInDown.duration(400).delay(120)}
           className="mx-5 mb-5 rounded-2xl px-4 py-3.5 flex-row justify-between items-center"
           style={[styles.card, { backgroundColor: cardBg }]}
         >
@@ -101,7 +148,7 @@ export default function AnalyticsScreen() {
 
         {/* ── Income vs Expense progress bar ── */}
         {(income > 0 || expense > 0) && (
-          <Animated.View entering={FadeInDown.duration(400).delay(180)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
+          <Animated.View key={`income-vs-expense-${animationCycle}`} entering={FadeInDown.duration(400).delay(150)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
             <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Ingresos vs Gastos</Text>
             <View className="flex-row h-3 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700">
               {income > 0 && (
@@ -131,13 +178,13 @@ export default function AnalyticsScreen() {
         )}
 
         {/* ── Bar Chart ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(220)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
+        <Animated.View key={`bar-chart-${animationCycle}`} entering={FadeInDown.duration(400).delay(180)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">{period === "week" ? "Esta semana" : period === "month" ? "Este mes" : "Este año"}</Text>
           {chartData.every((d) => d.income === 0 && d.expense === 0) ? <EmptyChartState text="Sin datos para este período" /> : <BarChart data={chartData} />}
         </Animated.View>
 
         {/* ── Expense Donut ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(270)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
+        <Animated.View key={`expense-donut-${animationCycle}`} entering={FadeInDown.duration(400).delay(220)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Gastos por categoría</Text>
           {expenseBreakdown.length === 0 ? (
             <EmptyChartState text="Sin gastos en este período" />
@@ -153,7 +200,7 @@ export default function AnalyticsScreen() {
         </Animated.View>
 
         {/* ── Income Donut ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(320)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
+        <Animated.View key={`income-donut-${animationCycle}`} entering={FadeInDown.duration(400).delay(260)} className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Ingresos por categoría</Text>
           {incomeBreakdown.length === 0 ? (
             <EmptyChartState text="Sin ingresos en este período" />
@@ -168,17 +215,76 @@ export default function AnalyticsScreen() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function SummaryCard({ label, amount, color, icon, cardBg }: { label: string; amount: number; color: string; icon: string; cardBg: string }) {
+function SummaryCard({
+  label,
+  amount,
+  color,
+  icon,
+  cardBg,
+  percentageChange,
+  difference,
+  isExpense = false,
+  onPress,
+}: {
+  label: string;
+  amount: number;
+  color: string;
+  icon: string;
+  cardBg: string;
+  percentageChange?: { percentage: number; isPositive: boolean };
+  difference?: number;
+  isExpense?: boolean;
+  onPress?: () => void;
+}) {
+  const getChangeColor = () => {
+    if (!percentageChange) return color;
+    if (isExpense) {
+      return !percentageChange.isPositive ? "#22c55e" : "#ef4444";
+    } else {
+      return percentageChange.isPositive ? "#22c55e" : "#ef4444";
+    }
+  };
+
+  const getChangeArrow = () => {
+    if (!percentageChange) return undefined;
+    if (isExpense) {
+      return !percentageChange.isPositive ? "arrow-down" : "arrow-up";
+    } else {
+      return percentageChange.isPositive ? "arrow-up" : "arrow-down";
+    }
+  };
+
   return (
-    <View className="flex-1 rounded-2xl p-4" style={[styles.card, { backgroundColor: cardBg }]}>
-      <View className="w-9 h-9 rounded-full items-center justify-center mb-2" style={{ backgroundColor: color + "20" }}>
-        <Ionicons name={icon as any} size={18} color={color} />
+    <Pressable 
+      className="flex-1 rounded-2xl p-4 active:opacity-70" 
+      style={[styles.card, { backgroundColor: cardBg }]}
+      onPress={onPress}
+    >
+      <View className="flex-row items-center justify-between mb-3">
+        <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: color + "20" }}>
+          <Ionicons name={icon as any} size={18} color={color} />
+        </View>
+        {percentageChange && (
+          <View className="items-end gap-0.5">
+            <View className="flex-row items-center gap-1">
+              <Ionicons name={getChangeArrow() as any} size={14} color={getChangeColor()} />
+              <Text style={{ color: getChangeColor(), fontSize: 11, fontWeight: "600" }}>
+                {percentageChange.percentage.toFixed(1)}%
+              </Text>
+            </View>
+            {difference !== undefined && (
+              <Text style={{ color: getChangeColor(), fontSize: 10, fontWeight: "500" }}>
+                {difference >= 0 ? "+" : ""}{formatCurrency(difference)}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
       <Text className="text-xs text-slate-400 dark:text-slate-500 mb-1">{label}</Text>
       <Text className="text-sm font-bold" style={{ color }} numberOfLines={1} adjustsFontSizeToFit>
         {formatCurrency(amount)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

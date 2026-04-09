@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TransactionItem from "@/components/transaction-item";
@@ -29,9 +29,23 @@ export default function TransactionsScreen() {
   const router = useRouter();
   const { alert } = useAlert();
   const { transactions, deleteTransaction } = useTransactionStore();
+  const searchParams = useLocalSearchParams();
+  const [animationCycle, setAnimationCycle] = useState(0);
 
-  const [filter, setFilter] = useState<Filter>("all");
+  const initialFilter = (searchParams.filter as Filter) || "all";
+  const [filter, setFilter] = useState<Filter>(initialFilter);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setFilter(initialFilter);
+  }, [initialFilter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setAnimationCycle((prev) => prev + 1);
+    }, [])
+  );
+
 
   const filtered = useMemo(() => {
     let result = transactions;
@@ -65,13 +79,13 @@ export default function TransactionsScreen() {
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ── Header ── */}
-      <View className="px-5 pt-4 pb-3">
+      <Animated.View key={`tx-header-${animationCycle}`} entering={FadeInDown.duration(400).delay(0)} className="px-5 pt-4 pb-3">
         <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">Movimientos</Text>
         <Text className="text-sm text-slate-400 dark:text-slate-500">{transactions.length} transacciones registradas</Text>
-      </View>
+      </Animated.View>
 
       {/* ── Summary strip ── */}
-      <View className="flex-row mx-5 mb-4 gap-x-3">
+      <Animated.View key={`tx-summary-${animationCycle}`} entering={FadeInDown.duration(400).delay(60)} className="flex-row mx-5 mb-4 gap-x-3">
         <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: INCOME_COLOR + "18" }}>
           <Ionicons name="arrow-down-circle" size={18} color={INCOME_COLOR} />
           <View>
@@ -94,10 +108,10 @@ export default function TransactionsScreen() {
             </Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* ── Search ── */}
-      <View className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+      <Animated.View key={`tx-search-${animationCycle}`} entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
         <Ionicons name="search-outline" size={18} color={colors.muted} />
         <TextInput
           className="flex-1 h-11 text-sm ml-2 text-slate-800 dark:text-slate-100"
@@ -112,10 +126,10 @@ export default function TransactionsScreen() {
             <Ionicons name="close-circle" size={18} color={colors.muted} />
           </Pressable>
         )}
-      </View>
+      </Animated.View>
 
       {/* ── Filter chips ── */}
-      <View className="flex-row mx-5 mb-4 gap-x-2">
+      <Animated.View key={`tx-filters-${animationCycle}`} entering={FadeInDown.duration(400).delay(140)} className="flex-row mx-5 mb-4 gap-x-2">
         {FILTERS.map(({ key, label }) => {
           const active = filter === key;
           return (
@@ -134,11 +148,11 @@ export default function TransactionsScreen() {
             </Pressable>
           );
         })}
-      </View>
+      </Animated.View>
 
       {/* ── List ── */}
       {grouped.length === 0 ? (
-        <Animated.View entering={FadeIn.duration(300)} className="flex-1 items-center justify-center">
+        <Animated.View key={`tx-empty-${animationCycle}`} entering={FadeInDown.duration(400).delay(180)} className="flex-1 items-center justify-center">
           <View className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: PRIMARY + "15" }}>
             <Ionicons name={search ? "search-outline" : "document-text-outline"} size={32} color={PRIMARY} />
           </View>
@@ -147,7 +161,8 @@ export default function TransactionsScreen() {
           </Text>
         </Animated.View>
       ) : (
-        <FlatList
+        <Animated.View key={`tx-list-${animationCycle}`} entering={FadeInDown.duration(400).delay(180)} style={{ flex: 1 }}>
+          <FlatList
           data={grouped}
           keyExtractor={(item) => item.date}
           showsVerticalScrollIndicator={false}
@@ -161,17 +176,20 @@ export default function TransactionsScreen() {
               ))}
             </View>
           )}
-        />
+          />
+        </Animated.View>
       )}
 
       {/* ── FAB ── */}
-      <Pressable
+      <Animated.View key={`tx-fab-${animationCycle}`} entering={FadeInDown.duration(400).delay(220)}>
+        <Pressable
         className="absolute bottom-8 right-6 w-14 h-14 rounded-full items-center justify-center"
         style={[styles.fab, { backgroundColor: PRIMARY }]}
         onPress={() => router.push("/add-transaction")}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+      </Animated.View>
     </SafeAreaView>
   );
 }
