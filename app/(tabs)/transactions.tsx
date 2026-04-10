@@ -10,6 +10,7 @@ import { getCategoryById } from "@/constants/categories";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { TransactionType } from "@/types";
 import { formatCurrency, groupTransactionsByDate } from "@/utils/calculations";
@@ -29,6 +30,7 @@ export default function TransactionsScreen() {
   const router = useRouter();
   const { alert } = useAlert();
   const { transactions, deleteTransaction } = useTransactionStore();
+  const { goals } = useSavingsGoalStore();
   const searchParams = useLocalSearchParams();
   const [animationCycle, setAnimationCycle] = useState(0);
 
@@ -61,6 +63,7 @@ export default function TransactionsScreen() {
   }, [transactions, filter, search]);
 
   const grouped = useMemo(() => groupTransactionsByDate(filtered), [filtered]);
+  const goalById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
 
   const handleDelete = (id: string) => {
     alert("Eliminar transacción", "¿Estás seguro de que quieres eliminar esta transacción?", [
@@ -172,7 +175,7 @@ export default function TransactionsScreen() {
               {/* Date label */}
               <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{group.label}</Text>
               {group.items.map((tx) => (
-                <TransactionItem key={tx.id} transaction={tx} onDelete={handleDelete} />
+                <TransactionItem key={tx.id} transaction={tx} onDelete={handleDelete} goalById={goalById} />
               ))}
             </View>
           )}

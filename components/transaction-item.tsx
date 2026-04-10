@@ -1,38 +1,40 @@
 import { getCategoryById } from "@/constants/categories";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useSavingsGoalStore } from "@/store/use-savings-goals";
-import { Transaction } from "@/types";
+import { SavingsGoal, Transaction } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, { FadeInRight, SlideOutLeft } from "react-native-reanimated";
 
 interface Props {
   transaction: Transaction;
   onDelete?: (id: string) => void;
+  goalById?: Map<string, SavingsGoal>;
 }
 
-export default function TransactionItem({ transaction, onDelete }: Props) {
+function TransactionItem({ transaction, onDelete, goalById }: Props) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const { goals } = useSavingsGoalStore();
   const isIncome = transaction.type === "income";
 
-  // For goal contributions, use the goal's icon and color
-  let category = getCategoryById(transaction.category);
-  let displayIcon = category?.icon ?? "help-circle-outline";
-  let displayColor = category?.color ?? "#64748B";
-  let displayName = category?.name ?? "Sin categoría";
+  const { displayIcon, displayColor, displayName } = useMemo(() => {
+    const category = getCategoryById(transaction.category);
+    let icon = category?.icon ?? "help-circle-outline";
+    let color = category?.color ?? "#64748B";
+    let name = category?.name ?? "Sin categoría";
 
-  if (transaction.isGoalContribution && transaction.goalId) {
-    const goal = goals.find((g) => g.id === transaction.goalId);
-    if (goal) {
-      displayIcon = goal.icon || "trophy-outline";
-      displayColor = goal.color;
-      displayName = goal.name;
+    if (transaction.isGoalContribution && transaction.goalId) {
+      const goal = goalById?.get(transaction.goalId);
+      if (goal) {
+        icon = goal.icon || "trophy-outline";
+        color = goal.color;
+        name = goal.name;
+      }
     }
-  }
+
+    return { displayIcon: icon, displayColor: color, displayName: name };
+  }, [goalById, transaction.category, transaction.goalId, transaction.isGoalContribution]);
 
   return (
     <Animated.View entering={FadeInRight.duration(300)} exiting={SlideOutLeft.duration(250)}>
@@ -69,3 +71,5 @@ export default function TransactionItem({ transaction, onDelete }: Props) {
     </Animated.View>
   );
 }
+
+export default React.memo(TransactionItem);

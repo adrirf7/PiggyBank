@@ -11,8 +11,30 @@ type RollingNumberProps = {
 };
 
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-const STACK_CYCLES = 3;
+const STACK_CYCLES = 6;
 const DIGIT_STACK = Array.from({ length: DIGITS.length * STACK_CYCLES }, (_, index) => DIGITS[index % 10]);
+
+function isDigitChar(char: string): boolean {
+  const code = char.charCodeAt(0);
+  return code >= 48 && code <= 57;
+}
+
+function hashString(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function createSeededRandom(seed: number): () => number {
+  let value = seed % 2147483647;
+  if (value <= 0) value += 2147483646;
+  return () => {
+    value = (value * 16807) % 2147483647;
+    return (value - 1) / 2147483646;
+  };
+}
 
 type RollingDigitProps = {
   digit: number;
@@ -24,7 +46,7 @@ type RollingDigitProps = {
   spacingStyle?: ViewStyle;
 };
 
-function RollingDigit({ digit, height, duration, delay, extraTurns, textStyle, spacingStyle }: RollingDigitProps) {
+const RollingDigit = React.memo(function RollingDigit({ digit, height, duration, delay, extraTurns, textStyle, spacingStyle }: RollingDigitProps) {
   const animatedIndex = useSharedValue(digit);
   const didAnimate = useRef(false);
 
@@ -35,24 +57,28 @@ function RollingDigit({ digit, height, duration, delay, extraTurns, textStyle, s
     }
 
     const currentIndex = Math.round(animatedIndex.value);
-    const currentDigit = ((currentIndex % 10) + 10) % 10;
+    const normalizedIndex = ((currentIndex % 10) + 10) % 10 + 10;
+    animatedIndex.value = normalizedIndex;
+    const currentDigit = normalizedIndex % 10;
     let delta = (digit - currentDigit + 10) % 10;
     if (delta === 0 && !didAnimate.current) {
       delta = 10;
     }
     if (delta === 0) delta = 10;
 
-    const targetIndex = currentIndex + delta + extraTurns * 10;
+    let targetIndex = normalizedIndex + delta + extraTurns * 10;
+    const maxIndex = DIGIT_STACK.length - 1;
+    if (targetIndex > maxIndex) {
+      const overflow = targetIndex - maxIndex;
+      const turnsToRemove = Math.ceil(overflow / 10);
+      targetIndex -= turnsToRemove * 10;
+    }
     animatedIndex.value = withDelay(
       delay,
       withTiming(
         targetIndex,
         { duration, easing: Easing.out(Easing.cubic) },
-        (finished) => {
-          if (finished) {
-            animatedIndex.value = targetIndex % 10;
-          }
-        },
+        undefined,
       ),
     );
     didAnimate.current = true;
@@ -81,7 +107,7 @@ function RollingDigit({ digit, height, duration, delay, extraTurns, textStyle, s
       </Animated.View>
     </View>
   );
-}
+});
 
 type RollingSignProps = {
   char: string;
@@ -92,7 +118,7 @@ type RollingSignProps = {
   spacingStyle?: ViewStyle;
 };
 
-function RollingSign({ char, height, delay, duration, textStyle, spacingStyle }: RollingSignProps) {
+const RollingSign = React.memo(function RollingSign({ char, height, delay, duration, textStyle, spacingStyle }: RollingSignProps) {
   const translateY = useSharedValue(height);
   const opacity = useSharedValue(0);
 
@@ -129,47 +155,63 @@ function RollingSign({ char, height, delay, duration, textStyle, spacingStyle }:
       <Animated.Text style={[textStyle, styles.digitText, animatedStyle]}>{char}</Animated.Text>
     </View>
   );
-}
+});
 
 export default function RollingNumber({ value, style, duration = 900 }: RollingNumberProps) {
   const formatted = useMemo(() => formatCurrency(value), [value]);
   const [digitHeight, setDigitHeight] = useState(0);
 
   const baseStyle = useMemo(() => StyleSheet.flatten([styles.tabular, style]) as TextStyle, [style]);
-  const {
-    margin,
-    marginBottom,
-    marginTop,
-    marginLeft,
-    marginRight,
-    marginHorizontal,
-    marginVertical,
-    ...textStyle
-  } = baseStyle ?? {};
-  const containerStyle: ViewStyle = {
-    margin,
-    marginBottom,
-    marginTop,
-    marginLeft,
-    marginRight,
-    marginHorizontal,
-    marginVertical,
-  };
+  const { textStyle, containerStyle } = useMemo(() => {
+    const {
+      margin,
+      marginBottom,
+      marginTop,
+      marginLeft,
+      marginRight,
+      marginHorizontal,
+      marginVertical,
+      ...restTextStyle
+    } = baseStyle ?? {};
+
+    return {
+      textStyle: restTextStyle as TextStyle,
+      containerStyle: {
+        margin,
+        marginBottom,
+        marginTop,
+        marginLeft,
+        marginRight,
+        marginHorizontal,
+        marginVertical,
+      } as ViewStyle,
+    };
+  }, [baseStyle]);
 
   const letterSpacing = typeof textStyle.letterSpacing === "number" ? textStyle.letterSpacing : 0;
+  const estimatedDigitHeight = useMemo(() => {
+    if (typeof textStyle.lineHeight === "number" && textStyle.lineHeight > 0) {
+      return textStyle.lineHeight;
+    }
+    if (typeof textStyle.fontSize === "number" && textStyle.fontSize > 0) {
+      return Math.round(textStyle.fontSize * 1.2);
+    }
+    return 0;
+  }, [textStyle.fontSize, textStyle.lineHeight]);
+  const resolvedDigitHeight = digitHeight || estimatedDigitHeight;
 
   const handleMeasure = (event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height;
-    if (height !== digitHeight) {
+    if (height > 0 && height !== digitHeight) {
       setDigitHeight(height);
     }
   };
 
-  const chars = formatted.split("");
+  const chars = useMemo(() => formatted.split(""), [formatted]);
   const digitOrderByIndex = useMemo(() => {
     const digitIndices: number[] = [];
     chars.forEach((char, index) => {
-      if (/\d/.test(char)) digitIndices.push(index);
+      if (isDigitChar(char)) digitIndices.push(index);
     });
     const map = new Map<number, number>();
     digitIndices.forEach((charIndex, digitIndex) => {
@@ -181,19 +223,20 @@ export default function RollingNumber({ value, style, duration = 900 }: RollingN
   const digitConfigs = useMemo(
     () =>
       chars.map((char, index) => {
-        if (!/\d/.test(char)) return null;
+        if (!isDigitChar(char)) return null;
         const orderFromRight = digitOrderByIndex.get(index) ?? 0;
         const baseDelay = orderFromRight * 120;
-        const randomDelay = Math.floor(Math.random() * 140);
-        const extraTurns = Math.floor(Math.random() * 3);
-        const durationJitter = Math.floor(Math.random() * 250);
+        const rng = createSeededRandom(hashString(`${formatted}-digit-${index}`));
+        const randomDelay = Math.floor(rng() * 140);
+        const extraTurns = Math.floor(rng() * 3);
+        const durationJitter = Math.floor(rng() * 250);
         return {
           delay: baseDelay + randomDelay,
           extraTurns,
           duration: duration + durationJitter + orderFromRight * 40,
         };
       }),
-    [chars, duration, digitOrderByIndex],
+    [chars, duration, digitOrderByIndex, formatted],
   );
   const maxDigitTime = useMemo(() => {
     let max = 0;
@@ -204,15 +247,32 @@ export default function RollingNumber({ value, style, duration = 900 }: RollingN
     });
     return max;
   }, [digitConfigs, duration]);
+  const firstDigitTime = useMemo(() => {
+    let time = 0;
+    chars.forEach((char, index) => {
+      if (!isDigitChar(char)) return;
+      const orderFromRight = digitOrderByIndex.get(index) ?? 0;
+      if (orderFromRight !== 0) return;
+      const config = digitConfigs[index];
+      if (!config) return;
+      const total = (config.delay ?? 0) + (config.duration ?? duration);
+      if (total > time) time = total;
+    });
+    return time;
+  }, [chars, digitConfigs, digitOrderByIndex, duration]);
   const signConfig = useMemo(() => {
     const hasMinus = chars.some((char) => char === "-" || char === "\u2212");
     if (!hasMinus) return null;
-    const durationJitter = Math.floor(Math.random() * 250);
+    const rng = createSeededRandom(hashString(`${formatted}-sign`));
+    const durationJitter = Math.floor(rng() * 250);
+    const signDuration = duration + durationJitter;
+    const targetFinish = firstDigitTime || maxDigitTime;
+    const delay = Math.max(0, targetFinish - signDuration + 60);
     return {
-      delay: maxDigitTime + 80,
-      duration: duration + durationJitter,
+      delay,
+      duration: signDuration,
     };
-  }, [chars, duration, maxDigitTime]);
+  }, [chars, duration, firstDigitTime, maxDigitTime, formatted]);
 
   return (
     <View style={[styles.row, containerStyle]} accessibilityRole="text">
@@ -220,7 +280,7 @@ export default function RollingNumber({ value, style, duration = 900 }: RollingN
         0
       </Text>
       {chars.map((char, index) => {
-        const isDigit = /\d/.test(char);
+        const isDigit = isDigitChar(char);
         const spacingStyle = index < chars.length - 1 && letterSpacing !== 0 ? { marginRight: letterSpacing } : undefined;
 
         if (isDigit) {
@@ -229,7 +289,7 @@ export default function RollingNumber({ value, style, duration = 900 }: RollingN
             <RollingDigit
               key={`digit-${index}`}
               digit={Number(char)}
-              height={digitHeight}
+              height={resolvedDigitHeight}
               duration={config?.duration ?? duration}
               delay={config?.delay ?? 0}
               extraTurns={config?.extraTurns ?? 0}
@@ -244,7 +304,7 @@ export default function RollingNumber({ value, style, duration = 900 }: RollingN
             <RollingSign
               key={`char-${index}`}
               char={char}
-              height={digitHeight}
+              height={resolvedDigitHeight}
               delay={signConfig?.delay ?? maxDigitTime}
               duration={signConfig?.duration ?? duration}
               textStyle={textStyle}
