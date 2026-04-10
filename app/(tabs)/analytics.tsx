@@ -245,13 +245,9 @@ function SummaryCard({
     }
   };
 
-  const getChangeArrow = () => {
-    if (!percentageChange) return undefined;
-    if (isExpense) {
-      return !percentageChange.isPositive ? "arrow-down" : "arrow-up";
-    } else {
-      return percentageChange.isPositive ? "arrow-up" : "arrow-down";
-    }
+  const getTrendSign = () => {
+    if (!percentageChange) return "";
+    return percentageChange.isPositive ? "↑" : "↓";
   };
 
   return (
@@ -264,24 +260,20 @@ function SummaryCard({
         <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: color + "20" }}>
           <Ionicons name={icon as any} size={18} color={color} />
         </View>
-        {percentageChange && (
-          <View className="items-end gap-0.5">
-            <View className="flex-row items-center gap-1">
-              <Ionicons name={getChangeArrow() as any} size={14} color={getChangeColor()} />
-              <Text style={{ color: getChangeColor(), fontSize: 11, fontWeight: "600" }}>
-                {percentageChange.percentage.toFixed(1)}%
-              </Text>
+        {percentageChange && difference !== undefined && (
+          <View className="rounded-2xl px-2.5 py-1.5" style={{ backgroundColor: getChangeColor() + "16", borderWidth: 1, borderColor: getChangeColor() + "35" }}>
+            <View className="flex-row items-center gap-1.5">
+              <Text style={[styles.trendBubbleText, { color: getChangeColor() }]}>{getTrendSign()}</Text>
+              <View>
+                <Text style={[styles.trendBubbleAmountText, { color: getChangeColor(), textAlign: "right" }]}>{formatCurrency(Math.abs(difference))}</Text>
+                <Text style={[styles.trendBubblePercentText, { color: getChangeColor(), textAlign: "right" }]}>{Math.abs(percentageChange.percentage).toFixed(1)}%</Text>
+              </View>
             </View>
-            {difference !== undefined && (
-              <Text style={{ color: getChangeColor(), fontSize: 10, fontWeight: "500" }}>
-                {difference >= 0 ? "+" : ""}{formatCurrency(difference)}
-              </Text>
-            )}
           </View>
         )}
       </View>
       <Text className="text-xs text-slate-400 dark:text-slate-500 mb-1">{label}</Text>
-      <Text className="text-sm font-bold" style={{ color }} numberOfLines={1} adjustsFontSizeToFit>
+      <Text className="text-base font-bold" style={{ color }} numberOfLines={1} adjustsFontSizeToFit>
         {formatCurrency(amount)}
       </Text>
     </Pressable>
@@ -346,4 +338,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  trendBubbleText: { fontSize: 11, lineHeight: 14, fontWeight: "700", includeFontPadding: false },
+  trendBubbleAmountText: { fontSize: 11, lineHeight: 13.5, fontWeight: "700", includeFontPadding: false },
+  trendBubblePercentText: { fontSize: 10, lineHeight: 12, fontWeight: "700", includeFontPadding: false },
 });

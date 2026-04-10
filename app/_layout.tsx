@@ -28,7 +28,7 @@ function AuthGate() {
     } else if (user && inAuth) {
       router.replace("/(tabs)");
     }
-  }, [user, loading, segments]);
+  }, [user, loading, segments, router]);
 
   return null;
 }

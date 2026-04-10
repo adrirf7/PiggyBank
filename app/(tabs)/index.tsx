@@ -8,6 +8,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import RollingNumber from "@/components/rolling-number";
 import TransactionItem from "@/components/transaction-item";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
@@ -102,7 +103,7 @@ export default function DashboardScreen() {
             <View style={styles.circle1} />
             <View style={styles.circle2} />
             <Text style={styles.balanceLabel}>Saldo disponible</Text>
-            <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
+            <RollingNumber value={balance} style={styles.balanceAmount} />
             <View style={styles.balanceRow}>
               <View style={styles.balanceStat}>
                 <Ionicons name="arrow-down-circle" size={14} color="rgba(255,255,255,0.7)" />
