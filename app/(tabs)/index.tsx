@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -255,7 +255,7 @@ export default function DashboardScreen() {
             <View style={styles.circle1} />
             <View style={styles.circle2} />
             <Text style={styles.balanceLabel}>Saldo disponible</Text>
-            <RollingNumber value={balance} style={styles.balanceAmount} currencyCode={userProfile?.currencyCode} />
+            <RollingNumber value={balance} style={styles.balanceAmount} currencyCode={userProfile?.currencyCode} hasData={transactions.length > 0} />
             <View style={styles.balanceRow}>
               <View style={styles.balanceStat}>
                 <Ionicons name="arrow-down-circle" size={14} color="rgba(255,255,255,0.7)" />
@@ -326,7 +326,9 @@ export default function DashboardScreen() {
                     <View className="flex-row items-center gap-1.5">
                       <Text style={[styles.trendBubbleText, { color: incomeTrendColor }]}>{incomeTrendSign}</Text>
                       <View>
-                        <Text style={[styles.trendBubbleAmountText, { color: incomeTrendColor, textAlign: "right" }]}>{formatCurrency(Math.abs(incomeDifference), userProfile?.currencyCode)}</Text>
+                        <Text style={[styles.trendBubbleAmountText, { color: incomeTrendColor, textAlign: "right" }]}>
+                          {formatCurrency(Math.abs(incomeDifference), userProfile?.currencyCode)}
+                        </Text>
                         <Text style={[styles.trendBubblePercentText, { color: incomeTrendColor, textAlign: "right" }]}>{Math.abs(incomeChange.percentage).toFixed(1)}%</Text>
                       </View>
                     </View>
@@ -351,7 +353,9 @@ export default function DashboardScreen() {
                     <View className="flex-row items-center gap-1.5">
                       <Text style={[styles.trendBubbleText, { color: expenseTrendColor }]}>{expenseTrendSign}</Text>
                       <View>
-                        <Text style={[styles.trendBubbleAmountText, { color: expenseTrendColor, textAlign: "right" }]}>{formatCurrency(Math.abs(expenseDifference), userProfile?.currencyCode)}</Text>
+                        <Text style={[styles.trendBubbleAmountText, { color: expenseTrendColor, textAlign: "right" }]}>
+                          {formatCurrency(Math.abs(expenseDifference), userProfile?.currencyCode)}
+                        </Text>
                         <Text style={[styles.trendBubblePercentText, { color: expenseTrendColor, textAlign: "right" }]}>{Math.abs(expenseChange.percentage).toFixed(1)}%</Text>
                       </View>
                     </View>
@@ -410,7 +414,8 @@ export default function DashboardScreen() {
               ) : (
                 <>
                   <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
+                    {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de{" "}
+                    {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
                   </Text>
                   <View className="h-1.5 rounded-full overflow-hidden mt-2" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }}>
                     <View className="h-full rounded-full" style={{ width: `${goalPercent}%`, backgroundColor: PRIMARY }} />

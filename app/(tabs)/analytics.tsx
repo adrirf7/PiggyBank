@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { addMonths, addWeeks, addYears, endOfWeek, format, startOfWeek, subMonths, subWeeks, subYears } from "date-fns";
+import { es } from "date-fns/locale";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BarChart from "@/components/bar-chart";
@@ -39,12 +41,13 @@ export default function AnalyticsScreen() {
   const { transactions } = useTransactionStore();
   const { allCategories } = useCategoriesStore();
   const [period, setPeriod] = useState<Period>("month");
+  const [referenceDate, setReferenceDate] = useState(new Date());
   const [periodSlideDirection, setPeriodSlideDirection] = useState<"left" | "right">("left");
-  const [periodSelectorWidth, setPeriodSelectorWidth] = useState(0);
+  const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const filtered = useMemo(() => filterByPeriod(transactions, period), [transactions, period]);
-  const previousFiltered = useMemo(() => filterByPreviousPeriod(transactions, period), [transactions, period]);
+  const filtered = useMemo(() => filterByPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
+  const previousFiltered = useMemo(() => filterByPreviousPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
   const income = getTotalByType(filtered, "income");
   const expense = getTotalByType(filtered, "expense");
   const previousIncome = getTotalByType(previousFiltered, "income");
@@ -60,7 +63,7 @@ export default function AnalyticsScreen() {
 
   const expenseBreakdown = useMemo(() => getCategoryBreakdown(filtered, "expense"), [filtered]);
   const incomeBreakdown = useMemo(() => getCategoryBreakdown(filtered, "income"), [filtered]);
-  const chartData = useMemo(() => getChartDataForPeriod(transactions, period), [transactions, period]);
+  const chartData = useMemo(() => getChartDataForPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
 
   const categoriesById = useMemo(() => new Map<string, Category>(allCategories.map((category) => [category.id, category])), [allCategories]);
   const expenseSegments: DonutSegment[] = expenseBreakdown.map((d) => ({
@@ -78,26 +81,76 @@ export default function AnalyticsScreen() {
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
   const currency = userProfile?.currencyCode;
   const periodIndex = PERIODS.findIndex(({ key }) => key === period);
+  const periodLabel = PERIODS.find(({ key }) => key === period)?.label ?? "Mes";
 
   const handlePeriodChange = (nextPeriod: Period) => {
-    if (nextPeriod === period) return;
+    if (nextPeriod === period) {
+      setIsPeriodDropdownOpen(false);
+      return;
+    }
     const nextPeriodIndex = PERIODS.findIndex(({ key }) => key === nextPeriod);
     setPeriodSlideDirection(nextPeriodIndex > periodIndex ? "left" : "right");
+    setReferenceDate(new Date());
     setPeriod(nextPeriod);
+    setIsPeriodDropdownOpen(false);
   };
+
+  const movePeriod = (direction: "previous" | "next") => {
+    setPeriodSlideDirection(direction === "next" ? "left" : "right");
+    setReferenceDate((prev) => {
+      switch (period) {
+        case "week":
+          return direction === "next" ? addWeeks(prev, 1) : subWeeks(prev, 1);
+        case "month":
+          return direction === "next" ? addMonths(prev, 1) : subMonths(prev, 1);
+        case "year":
+          return direction === "next" ? addYears(prev, 1) : subYears(prev, 1);
+      }
+    });
+  };
+
+  const periodRangeLabel = useMemo(() => {
+    if (period === "week") {
+      const start = startOfWeek(referenceDate, { weekStartsOn: 1 });
+      const end = endOfWeek(referenceDate, { weekStartsOn: 1 });
+      return `${format(start, "d MMM", { locale: es })} - ${format(end, "d MMM yyyy", { locale: es })}`;
+    }
+
+    if (period === "month") {
+      const month = format(referenceDate, "MMMM", { locale: es });
+      return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${format(referenceDate, "yyyy", { locale: es })}`;
+    }
+
+    return format(referenceDate, "yyyy", { locale: es });
+  }, [period, referenceDate]);
+
+  const periodContentKey = useMemo(() => {
+    if (period === "week") {
+      return `${period}-${format(startOfWeek(referenceDate, { weekStartsOn: 1 }), "yyyy-MM-dd")}`;
+    }
+    if (period === "month") {
+      return `${period}-${format(referenceDate, "yyyy-MM")}`;
+    }
+    return `${period}-${format(referenceDate, "yyyy")}`;
+  }, [period, referenceDate]);
+
+  const chartTitle = useMemo(() => {
+    if (period === "week") return "Semana seleccionada";
+    if (period === "month") return "Mes seleccionado";
+    return "Año seleccionado";
+  }, [period]);
+
+  useEffect(() => {
+    setIsPeriodDropdownOpen(false);
+  }, [period]);
 
   const periodEnteringAnimation = periodSlideDirection === "left" ? SlideInRight.duration(220) : SlideInLeft.duration(220);
   const periodExitingAnimation = periodSlideDirection === "left" ? SlideOutLeft.duration(220) : SlideOutRight.duration(220);
-  const periodIndicatorX = useSharedValue(0);
-  const periodIndicatorWidth = periodSelectorWidth > 8 ? (periodSelectorWidth - 8) / PERIODS.length : 0;
-
-  useEffect(() => {
-    periodIndicatorX.value = withTiming(periodIndex * periodIndicatorWidth, { duration: 220 });
-  }, [periodIndex, periodIndicatorWidth, periodIndicatorX]);
 
   useFocusEffect(
     useCallback(() => {
       setPeriod("month");
+      setReferenceDate(new Date());
       setPeriodSlideDirection("left");
       requestAnimationFrame(() => {
         scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -105,50 +158,62 @@ export default function AnalyticsScreen() {
     }, []),
   );
 
-  const periodIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: periodIndicatorX.value }],
-  }));
-
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* ── Header ── */}
         <View className="px-5 pt-4 pb-3">
-          <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Análisis</Text>
-          <Text className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">Visualiza tus finanzas</Text>
+          <View className="flex-row items-start justify-between">
+            <View>
+              <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Análisis</Text>
+              <Text className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">Visualiza tus finanzas</Text>
+            </View>
+            <View className="relative">
+              <Pressable
+                className="flex-row items-center rounded-xl px-3 py-2"
+                style={{ backgroundColor: cardBg, borderWidth: 1, borderColor: colors.border }}
+                onPress={() => setIsPeriodDropdownOpen((prev) => !prev)}
+              >
+                <Text className="text-sm font-semibold mr-1.5" style={{ color: colors.text }}>
+                  {periodLabel}
+                </Text>
+                <Ionicons name={isPeriodDropdownOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.muted} />
+              </Pressable>
+              {isPeriodDropdownOpen && (
+                <View
+                  style={[
+                    styles.periodDropdown,
+                    {
+                      backgroundColor: cardBg,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  {PERIODS.map(({ key, label }) => (
+                    <Pressable key={key} onPress={() => handlePeriodChange(key)} style={[styles.periodDropdownItem, period === key ? { backgroundColor: PRIMARY + "14" } : undefined]}>
+                      <Text style={{ color: period === key ? PRIMARY : colors.text, fontWeight: period === key ? "700" : "600" }}>{label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
         </View>
 
-        {/* ── Period selector ── */}
-        <Animated.View
-          entering={FadeInDown.duration(400).delay(0)}
-          className="relative flex-row mx-5 mb-5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1"
-          onLayout={(event) => setPeriodSelectorWidth(event.nativeEvent.layout.width)}
-        >
-          {periodIndicatorWidth > 0 && (
-            <Animated.View
-              pointerEvents="none"
-              className="absolute top-1 bottom-1 rounded-lg"
-              style={[
-                {
-                  left: 4,
-                  width: periodIndicatorWidth,
-                  backgroundColor: PRIMARY,
-                },
-                periodIndicatorStyle,
-              ]}
-            />
-          )}
-          {PERIODS.map(({ key, label }) => (
-            <Pressable key={key} onPress={() => handlePeriodChange(key)} className="flex-1 items-center py-2 rounded-lg">
-              <Text className="text-sm font-semibold" style={{ color: period === key ? "#fff" : colors.muted }}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
+        <Animated.View entering={FadeInDown.duration(400).delay(0)} className="mx-5 mb-5 flex-row items-center justify-between rounded-2xl px-3 py-2.5" style={[styles.card, { backgroundColor: cardBg }]}>
+          <Pressable onPress={() => movePeriod("previous")} className="w-9 h-9 items-center justify-center rounded-full" style={{ backgroundColor: colors.background }}>
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
+          </Pressable>
+          <Text className="text-sm font-semibold text-center px-2" style={{ color: colors.text }}>
+            {periodRangeLabel}
+          </Text>
+          <Pressable onPress={() => movePeriod("next")} className="w-9 h-9 items-center justify-center rounded-full" style={{ backgroundColor: colors.background }}>
+            <Ionicons name="chevron-forward" size={18} color={colors.text} />
+          </Pressable>
         </Animated.View>
 
         <View className="mx-5 overflow-hidden">
-          <Animated.View key={period} entering={periodEnteringAnimation} exiting={periodExitingAnimation}>
+          <Animated.View key={periodContentKey} entering={periodEnteringAnimation} exiting={periodExitingAnimation}>
             {/* ── Summary cards ── */}
             <View className="flex-row gap-x-3 mb-4">
               <SummaryCard label="Ingresos" amount={income} color={INCOME_COLOR} icon="arrow-down" cardBg={cardBg} percentageChange={incomeChange} difference={incomeDifference} onPress={() => router.push("/transactions?filter=income")} currency={currency} />
@@ -210,7 +275,8 @@ export default function AnalyticsScreen() {
 
         {/* ── Bar Chart ── */}
         <View className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">{period === "week" ? "Esta semana" : period === "month" ? "Este mes" : "Este año"}</Text>
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">{chartTitle}</Text>
+          <Text className="text-xs text-slate-400 dark:text-slate-500 mb-4">{periodRangeLabel}</Text>
           {chartData.every((d) => d.income === 0 && d.expense === 0) ? <EmptyChartState text="Sin datos para este período" /> : <BarChart data={chartData} />}
         </View>
 
@@ -377,6 +443,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+  },
+  periodDropdown: {
+    position: "absolute",
+    top: 44,
+    right: 0,
+    minWidth: 130,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 4,
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  periodDropdownItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
   },
   trendBubbleText: { fontSize: 11, lineHeight: 14, fontWeight: "700", includeFontPadding: false },
   trendBubbleAmountText: { fontSize: 11, lineHeight: 13.5, fontWeight: "700", includeFontPadding: false },

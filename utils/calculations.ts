@@ -18,8 +18,8 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 
-export function filterByPeriod(transactions: Transaction[], period: Period): Transaction[] {
-  const now = new Date();
+export function filterByPeriod(transactions: Transaction[], period: Period, referenceDate: Date = new Date()): Transaction[] {
+  const now = referenceDate;
   let start: Date;
   let end: Date;
 
@@ -44,8 +44,8 @@ export function filterByPeriod(transactions: Transaction[], period: Period): Tra
   });
 }
 
-export function filterByPreviousPeriod(transactions: Transaction[], period: Period): Transaction[] {
-  const now = new Date();
+export function filterByPreviousPeriod(transactions: Transaction[], period: Period, referenceDate: Date = new Date()): Transaction[] {
+  const now = referenceDate;
   let start: Date;
   let end: Date;
 
@@ -173,8 +173,8 @@ export function getMonthlyData(transactions: Transaction[], months = 6): Monthly
   });
 }
 
-export function getChartDataForPeriod(transactions: Transaction[], period: Period): MonthlyData[] {
-  const now = new Date();
+export function getChartDataForPeriod(transactions: Transaction[], period: Period, referenceDate: Date = new Date()): MonthlyData[] {
+  const now = referenceDate;
 
   switch (period) {
     case "week": {

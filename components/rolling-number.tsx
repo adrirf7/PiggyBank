@@ -9,6 +9,7 @@ type RollingNumberProps = {
   style?: TextStyle;
   duration?: number;
   currencyCode?: string;
+  hasData?: boolean;
 };
 
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -158,7 +159,7 @@ const RollingSign = React.memo(function RollingSign({ char, height, delay, durat
   );
 });
 
-export default function RollingNumber({ value, style, duration = 900, currencyCode }: RollingNumberProps) {
+export default function RollingNumber({ value, style, duration = 900, currencyCode, hasData = true }: RollingNumberProps) {
   const formatted = useMemo(() => formatCurrency(value, currencyCode), [currencyCode, value]);
   const [digitHeight, setDigitHeight] = useState(0);
 
@@ -274,6 +275,14 @@ export default function RollingNumber({ value, style, duration = 900, currencyCo
       duration: signDuration,
     };
   }, [chars, duration, firstDigitTime, maxDigitTime, formatted]);
+
+  if (!hasData) {
+    return (
+      <Text style={[baseStyle]} accessibilityRole="text">
+        -
+      </Text>
+    );
+  }
 
   return (
     <View style={[styles.row, containerStyle]} accessibilityRole="text">
