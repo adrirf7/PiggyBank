@@ -1,4 +1,12 @@
 import { auth, db } from "@/lib/firebase";
+import {
+  DEFAULT_COUNTRY,
+  DEFAULT_CURRENCY_CODE,
+  isSupportedCountry,
+  isSupportedCurrencyCode,
+  resolveCurrencyCodeFromCountry,
+  setCurrentCurrencyCode,
+} from "@/utils/currency";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
     createUserWithEmailAndPassword,
@@ -19,6 +27,8 @@ const GOOGLE_WEB_CLIENT_ID = "127868684471-hpo9enspjskojsrnnt2pu1givrmq0lo4.apps
 
 export interface UserProfile {
   photoBase64?: string | null;
+  country?: string;
+  currencyCode?: string;
 }
 
 interface AuthContextType {
@@ -29,7 +39,7 @@ interface AuthContextType {
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateUserProfile: (data: { displayName?: string; photoBase64?: string | null }) => Promise<void>;
+  updateUserProfile: (data: { displayName?: string; photoBase64?: string | null; country?: string; currencyCode?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -47,7 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
-      if (!firebaseUser) setUserProfile(null);
+      if (!firebaseUser) {
+        setCurrentCurrencyCode(DEFAULT_CURRENCY_CODE);
+        setUserProfile(null);
+      }
     });
     return unsubscribe;
   }, []);
@@ -58,11 +71,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsub = onSnapshot(
       doc(db, "users", user.uid),
       (snap) => {
-        setUserProfile(snap.exists() ? (snap.data() as UserProfile) : {});
+        const profile = snap.exists() ? (snap.data() as UserProfile) : {};
+        const country = isSupportedCountry(profile.country) ? profile.country : DEFAULT_COUNTRY;
+        const currencyCode = isSupportedCurrencyCode(profile.currencyCode)
+          ? profile.currencyCode
+          : resolveCurrencyCodeFromCountry(country, DEFAULT_CURRENCY_CODE);
+        setCurrentCurrencyCode(currencyCode);
+        setUserProfile({ ...profile, country, currencyCode });
       },
       () => {
         // Permission denied or offline — use empty profile, not a crash
-        setUserProfile({});
+        setCurrentCurrencyCode(DEFAULT_CURRENCY_CODE);
+        setUserProfile({ country: DEFAULT_COUNTRY, currencyCode: DEFAULT_CURRENCY_CODE });
       },
     );
     return unsub;
@@ -105,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (data: { displayName?: string; photoBase64?: string | null }) => {
+  const updateUserProfile = async (data: { displayName?: string; photoBase64?: string | null; country?: string; currencyCode?: string }) => {
     if (!user) return;
     if (data.displayName !== undefined) {
       await updateProfile(user, { displayName: data.displayName.trim() });
@@ -113,6 +133,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (data.photoBase64 !== undefined) {
       await setDoc(doc(db, "users", user.uid), { photoBase64: data.photoBase64 }, { merge: true });
+      setUserProfile((prev) => ({ ...(prev ?? {}), photoBase64: data.photoBase64 }));
+    }
+
+    if (data.country !== undefined) {
+      const country = isSupportedCountry(data.country) ? data.country : DEFAULT_COUNTRY;
+      const currencyCode = resolveCurrencyCodeFromCountry(country, DEFAULT_CURRENCY_CODE);
+      await setDoc(doc(db, "users", user.uid), { country, currencyCode }, { merge: true });
+      setCurrentCurrencyCode(currencyCode);
+      setUserProfile((prev) => ({ ...(prev ?? {}), country, currencyCode }));
+      return;
+    }
+
+    if (data.currencyCode !== undefined) {
+      const currencyCode = isSupportedCurrencyCode(data.currencyCode) ? data.currencyCode : DEFAULT_CURRENCY_CODE;
+      await setDoc(doc(db, "users", user.uid), { currencyCode }, { merge: true });
+      setCurrentCurrencyCode(currencyCode);
+      setUserProfile((prev) => ({ ...(prev ?? {}), currencyCode }));
     }
   };
 

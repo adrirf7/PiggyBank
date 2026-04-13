@@ -8,6 +8,7 @@ type RollingNumberProps = {
   value: number;
   style?: TextStyle;
   duration?: number;
+  currencyCode?: string;
 };
 
 const DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -157,8 +158,8 @@ const RollingSign = React.memo(function RollingSign({ char, height, delay, durat
   );
 });
 
-export default function RollingNumber({ value, style, duration = 900 }: RollingNumberProps) {
-  const formatted = useMemo(() => formatCurrency(value), [value]);
+export default function RollingNumber({ value, style, duration = 900, currencyCode }: RollingNumberProps) {
+  const formatted = useMemo(() => formatCurrency(value, currencyCode), [currencyCode, value]);
   const [digitHeight, setDigitHeight] = useState(0);
 
   const baseStyle = useMemo(() => StyleSheet.flatten([styles.tabular, style]) as TextStyle, [style]);

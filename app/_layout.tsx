@@ -9,6 +9,7 @@ import "../global.css";
 import { AlertDialogProvider } from "@/components/alert-dialog";
 import { AuthProvider, useAuth } from "@/context/auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useInitializeTheme } from "@/store/use-theme";
 
 export const unstable_settings = {
@@ -35,6 +36,7 @@ function AuthGate() {
 
 function RootNavigator() {
   const colorScheme = useColorScheme();
+  const reducedMotion = useReducedMotion();
   useInitializeTheme();
 
   return (
@@ -42,15 +44,16 @@ function RootNavigator() {
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <AlertDialogProvider>
           <AuthGate />
-          <Stack>
+          <Stack screenOptions={{ animation: reducedMotion ? "none" : "fade_from_bottom" }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "fade" }} />
-            <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false }} />
-            <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false }} />
-            <Stack.Screen name="savings-goals" options={{ headerShown: false }} />
-            <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false }} />
-            <Stack.Screen name="manage-goal" options={{ headerShown: false }} />
-            <Stack.Screen name="add-goal-contribution" options={{ presentation: "modal", headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: reducedMotion ? "none" : "fade" }} />
+            <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
+            <Stack.Screen name="manage-categories" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
+            <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
+            <Stack.Screen name="savings-goals" options={{ headerShown: false, animation: reducedMotion ? "none" : "fade_from_bottom" }} />
+            <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
+            <Stack.Screen name="manage-goal" options={{ headerShown: false, animation: reducedMotion ? "none" : "fade_from_bottom" }} />
+            <Stack.Screen name="add-goal-contribution" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
           </Stack>
           <StatusBar style="auto" />
         </AlertDialogProvider>
@@ -62,9 +65,7 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <AlertDialogProvider>
-        <RootNavigator />
-      </AlertDialogProvider>
+      <RootNavigator />
     </AuthProvider>
   );
 }

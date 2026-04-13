@@ -8,6 +8,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
+import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
@@ -20,6 +21,7 @@ export default function SavingsGoalsScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
   const { alert } = useAlert();
+  const { userProfile } = useAuth();
   const { goals, deleteGoal } = useSavingsGoalStore();
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
 
@@ -112,7 +114,7 @@ function GoalCard({ goal, cardBg, isDark, onDelete, onPress }: { goal: SavingsGo
         {/* Amounts row */}
         <View className="flex-row justify-between items-center">
           <Text className="text-xs text-slate-500 dark:text-slate-400">
-            {formatCurrency(goal.currentAmount)} <Text className="text-slate-300 dark:text-slate-600">/ {formatCurrency(goal.targetAmount)}</Text>
+            {formatCurrency(goal.currentAmount, userProfile?.currencyCode)} <Text className="text-slate-300 dark:text-slate-600">/ {formatCurrency(goal.targetAmount, userProfile?.currencyCode)}</Text>
           </Text>
           <Text className="text-xs font-bold" style={{ color: isComplete ? "#22C55E" : goal.color }}>
             {percent.toFixed(0)}%

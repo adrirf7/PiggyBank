@@ -8,15 +8,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { Colors } from "@/constants/theme";
+import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { SavingsGoal, Transaction } from "@/types";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(amount);
-}
+import { formatCurrency } from "@/utils/calculations";
 
 function getRecurrenceLabel(recurrence?: string): string {
   switch (recurrence) {
@@ -41,6 +39,7 @@ export default function ManageGoalScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
   const { alert } = useAlert();
+  const { userProfile } = useAuth();
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
   const { goals, deleteGoal } = useSavingsGoalStore();
   const { transactions, deleteGoalContribution } = useTransactionStore();
@@ -112,7 +111,7 @@ export default function ManageGoalScreen() {
       return;
     }
 
-    alert("Retirar todo", `¿Estás seguro de retirar todo el dinero (${formatCurrency(goal.currentAmount)}) del objetivo "${goal.name}"?`, [
+    alert("Retirar todo", `¿Estás seguro de retirar todo el dinero (${formatCurrency(goal.currentAmount, userProfile?.currencyCode)}) del objetivo "${goal.name}"?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Retirar todo",
@@ -137,7 +136,7 @@ export default function ManageGoalScreen() {
 
   const handleDeleteRecurringContribution = (transaction: Transaction) => {
     const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
-    alert("Eliminar aportación recurrente", `¿Eliminar la aportación de ${formatCurrency(transaction.amount)} (${recurrenceLabel})?`, [
+    alert("Eliminar aportación recurrente", `¿Eliminar la aportación de ${formatCurrency(transaction.amount, userProfile?.currencyCode)} (${recurrenceLabel})?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Eliminar",
@@ -209,17 +208,17 @@ export default function ManageGoalScreen() {
             </View>
             <View className="flex-row justify-between mb-2">
               <Text className="text-sm text-slate-500 dark:text-slate-400">Ahorrado</Text>
-              <Text className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(goal.currentAmount)}</Text>
+              <Text className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(goal.currentAmount, userProfile?.currencyCode)}</Text>
             </View>
             <View className="flex-row justify-between mb-2">
               <Text className="text-sm text-slate-500 dark:text-slate-400">Objetivo</Text>
-              <Text className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(goal.targetAmount)}</Text>
+              <Text className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(goal.targetAmount, userProfile?.currencyCode)}</Text>
             </View>
             {!isComplete && (
               <View className="flex-row justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
                 <Text className="text-sm text-slate-500 dark:text-slate-400">Falta</Text>
                 <Text className="text-sm font-bold" style={{ color: goal.color }}>
-                  {formatCurrency(remaining)}
+                  {formatCurrency(remaining, userProfile?.currencyCode)}
                 </Text>
               </View>
             )}
@@ -254,7 +253,7 @@ export default function ManageGoalScreen() {
             >
               <Ionicons name="cash-outline" size={18} color="#EF4444" />
               <Text className="font-semibold text-sm" style={{ color: "#EF4444" }}>
-                Retirar todo ({formatCurrency(goal.currentAmount)})
+                Retirar todo ({formatCurrency(goal.currentAmount, userProfile?.currencyCode)})
               </Text>
             </Pressable>
           )}
@@ -356,7 +355,7 @@ function RecurringContributionItem({
             </Text>
             <Text className={`text-xs mt-0.5 ${isAdd ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"} font-semibold`}>
               {isAdd ? "+" : "-"}
-              {formatCurrency(transaction.amount)}
+              {formatCurrency(transaction.amount, userProfile?.currencyCode)}
             </Text>
             {transaction.description && <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">{transaction.description}</Text>}
           </View>
@@ -410,7 +409,7 @@ function TransactionItem({
       </View>
       <Text className="text-sm font-bold" style={{ color: isAdd ? "#22C55E" : "#EF4444" }}>
         {isAdd ? "+" : "-"}
-        {formatCurrency(transaction.amount)}
+        {formatCurrency(transaction.amount, userProfile?.currencyCode)}
       </Text>
     </View>
   );

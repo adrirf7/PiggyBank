@@ -1,15 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import TransactionItem from "@/components/transaction-item";
-import { getCategoryById } from "@/constants/categories";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuth } from "@/context/auth";
+import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { TransactionType } from "@/types";
@@ -27,16 +29,26 @@ export default function TransactionsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
-  const router = useRouter();
   const { alert } = useAlert();
-  const { transactions, deleteTransaction } = useTransactionStore();
+  const { userProfile } = useAuth();
+  const { transactions, deleteTransactions } = useTransactionStore();
+  const { getCategoryById, allCategories } = useCategoriesStore();
   const { goals } = useSavingsGoalStore();
   const searchParams = useLocalSearchParams();
-  const [animationCycle, setAnimationCycle] = useState(0);
+  const router = useRouter();
 
   const initialFilter = (searchParams.filter as Filter) || "all";
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [search, setSearch] = useState("");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const listRef = useRef<FlatList<any>>(null);
+  const [filterSlideDirection, setFilterSlideDirection] = useState<"left" | "right">("left");
+
+  const clearSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds([]);
+  }, []);
 
   useEffect(() => {
     setFilter(initialFilter);
@@ -44,10 +56,33 @@ export default function TransactionsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setAnimationCycle((prev) => prev + 1);
-    }, [])
+      const backSubscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (!selectionMode) return false;
+        clearSelection();
+        return true;
+      });
+
+      return () => {
+        backSubscription.remove();
+      };
+    }, [selectionMode, clearSelection]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        clearSelection();
+      };
+    }, [clearSelection]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      });
+    }, []),
+  );
 
   const filtered = useMemo(() => {
     let result = transactions;
@@ -60,18 +95,59 @@ export default function TransactionsScreen() {
       });
     }
     return result;
-  }, [transactions, filter, search]);
+  }, [transactions, filter, search, getCategoryById]);
+
+  useEffect(() => {
+    if (!selectionMode) return;
+    const visibleIds = new Set(filtered.map((tx) => tx.id));
+    setSelectedIds((prev) => prev.filter((id) => visibleIds.has(id)));
+  }, [filtered, selectionMode]);
 
   const grouped = useMemo(() => groupTransactionsByDate(filtered), [filtered]);
   const goalById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
+  const categoriesById = useMemo(() => new Map(allCategories.map((category) => [category.id, category])), [allCategories]);
 
-  const handleDelete = (id: string) => {
-    alert("Eliminar transacción", "¿Estás seguro de que quieres eliminar esta transacción?", [
+  const selectedTransactions = useMemo(() => {
+    if (selectedIds.length === 0) return [];
+    const selectedSet = new Set(selectedIds);
+    return transactions.filter((tx) => selectedSet.has(tx.id));
+  }, [transactions, selectedIds]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((currentId) => currentId !== id) : [...prev, id];
+      if (next.length === 0) {
+        setSelectionMode(false);
+      }
+      return next;
+    });
+  };
+
+  const enterSelectionMode = (id: string) => {
+    setSelectionMode(true);
+    setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const exitSelectionMode = () => {
+    clearSelection();
+  };
+
+  const handleEditTransaction = (id: string) => {
+    router.push({ pathname: "/add-transaction", params: { transactionId: id } });
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedTransactions.length === 0) return;
+    const amountText = selectedTransactions.length === 1 ? "1 transacción" : `${selectedTransactions.length} transacciones`;
+    alert("Eliminar transacciones", `¿Seguro que quieres eliminar ${amountText}?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Eliminar",
         style: "destructive",
-        onPress: () => deleteTransaction(id),
+        onPress: async () => {
+          await deleteTransactions(selectedTransactions);
+          exitSelectionMode();
+        },
       },
     ]);
   };
@@ -82,13 +158,24 @@ export default function TransactionsScreen() {
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ── Header ── */}
-      <Animated.View key={`tx-header-${animationCycle}`} entering={FadeInDown.duration(400).delay(0)} className="px-5 pt-4 pb-3">
-        <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">Movimientos</Text>
-        <Text className="text-sm text-slate-400 dark:text-slate-500">{transactions.length} transacciones registradas</Text>
+      <Animated.View entering={FadeInDown.duration(400).delay(0)} className="px-5 pt-4 pb-3">
+        <View className="flex-row items-center justify-between mb-1">
+          <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Movimientos</Text>
+          {selectionMode && (
+            <Pressable onPress={exitSelectionMode} className="px-3 py-1.5 rounded-full" style={{ backgroundColor: isDark ? "#334155" : "#E2E8F0" }}>
+              <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">Cancelar</Text>
+            </Pressable>
+          )}
+        </View>
+        <Text className="text-sm text-slate-400 dark:text-slate-500">
+          {selectionMode
+            ? `${selectedIds.length} seleccionada${selectedIds.length === 1 ? "" : "s"} · Mantén pulsado para seleccionar`
+            : `${transactions.length} transacciones registradas · Mantén pulsado para seleccionar`}
+        </Text>
       </Animated.View>
 
       {/* ── Summary strip ── */}
-      <Animated.View key={`tx-summary-${animationCycle}`} entering={FadeInDown.duration(400).delay(60)} className="flex-row mx-5 mb-4 gap-x-3">
+      <Animated.View entering={FadeInDown.duration(400).delay(60)} className="flex-row mx-5 mb-4 gap-x-3">
         <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: INCOME_COLOR + "18" }}>
           <Ionicons name="arrow-down-circle" size={18} color={INCOME_COLOR} />
           <View>
@@ -96,7 +183,7 @@ export default function TransactionsScreen() {
               Total ingresos
             </Text>
             <Text className="text-sm font-bold" style={{ color: INCOME_COLOR }}>
-              {formatCurrency(totalIncome)}
+              {formatCurrency(totalIncome, userProfile?.currencyCode)}
             </Text>
           </View>
         </View>
@@ -107,14 +194,14 @@ export default function TransactionsScreen() {
               Total gastos
             </Text>
             <Text className="text-sm font-bold" style={{ color: EXPENSE_COLOR }}>
-              {formatCurrency(totalExpense)}
+              {formatCurrency(totalExpense, userProfile?.currencyCode)}
             </Text>
           </View>
         </View>
       </Animated.View>
 
       {/* ── Search ── */}
-      <Animated.View key={`tx-search-${animationCycle}`} entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+      <Animated.View entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
         <Ionicons name="search-outline" size={18} color={colors.muted} />
         <TextInput
           className="flex-1 h-11 text-sm ml-2 text-slate-800 dark:text-slate-100"
@@ -132,13 +219,19 @@ export default function TransactionsScreen() {
       </Animated.View>
 
       {/* ── Filter chips ── */}
-      <Animated.View key={`tx-filters-${animationCycle}`} entering={FadeInDown.duration(400).delay(140)} className="flex-row mx-5 mb-4 gap-x-2">
+      <Animated.View entering={FadeInDown.duration(400).delay(140)} className="flex-row mx-5 mb-4 gap-x-2">
         {FILTERS.map(({ key, label }) => {
           const active = filter === key;
           return (
             <Pressable
               key={key}
-              onPress={() => setFilter(key)}
+              onPress={() => {
+                if (key === filter) return;
+                const currentIndex = FILTERS.findIndex((item) => item.key === filter);
+                const nextIndex = FILTERS.findIndex((item) => item.key === key);
+                setFilterSlideDirection(nextIndex > currentIndex ? "left" : "right");
+                setFilter(key);
+              }}
               className="px-4 py-1.5 rounded-full border"
               style={{
                 backgroundColor: active ? PRIMARY : "transparent",
@@ -155,7 +248,7 @@ export default function TransactionsScreen() {
 
       {/* ── List ── */}
       {grouped.length === 0 ? (
-        <Animated.View key={`tx-empty-${animationCycle}`} entering={FadeInDown.duration(400).delay(180)} className="flex-1 items-center justify-center">
+        <Animated.View entering={FadeInDown.duration(400).delay(180)} className="flex-1 items-center justify-center">
           <View className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: PRIMARY + "15" }}>
             <Ionicons name={search ? "search-outline" : "document-text-outline"} size={32} color={PRIMARY} />
           </View>
@@ -164,35 +257,55 @@ export default function TransactionsScreen() {
           </Text>
         </Animated.View>
       ) : (
-        <Animated.View key={`tx-list-${animationCycle}`} entering={FadeInDown.duration(400).delay(180)} style={{ flex: 1 }}>
+        <Animated.View
+          key={`${filter}-${search.trim() ? "search" : "no-search"}`}
+          entering={(filterSlideDirection === "left" ? SlideInRight : SlideInLeft).duration(220)}
+          exiting={(filterSlideDirection === "left" ? SlideOutLeft : SlideOutRight).duration(220)}
+          style={{ flex: 1 }}
+        >
           <FlatList
-          data={grouped}
-          keyExtractor={(item) => item.date}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-          renderItem={({ item: group }) => (
-            <View>
-              {/* Date label */}
-              <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{group.label}</Text>
-              {group.items.map((tx) => (
-                <TransactionItem key={tx.id} transaction={tx} onDelete={handleDelete} goalById={goalById} />
-              ))}
-            </View>
-          )}
+            ref={listRef}
+            data={grouped}
+            keyExtractor={(item) => item.date}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+            renderItem={({ item: group }) => (
+              <View>
+                {/* Date label */}
+                <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{group.label}</Text>
+                {group.items.map((tx) => (
+                  <TransactionItem
+                    key={tx.id}
+                    transaction={tx}
+                    goalById={goalById}
+                    categoriesById={categoriesById}
+                    selectable={selectionMode}
+                    selected={selectedIds.includes(tx.id)}
+                    onPress={selectionMode ? toggleSelected : handleEditTransaction}
+                    onLongPress={enterSelectionMode}
+                    animated={false}
+                  />
+                ))}
+              </View>
+            )}
           />
         </Animated.View>
       )}
 
       {/* ── FAB ── */}
-      <Animated.View key={`tx-fab-${animationCycle}`} entering={FadeInDown.duration(400).delay(220)}>
-        <Pressable
-        className="absolute bottom-8 right-6 w-14 h-14 rounded-full items-center justify-center"
-        style={[styles.fab, { backgroundColor: PRIMARY }]}
-        onPress={() => router.push("/add-transaction")}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
-      </Animated.View>
+      {selectionMode && (
+        <Animated.View entering={FadeInDown.duration(400).delay(220)}>
+          <Pressable
+            className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
+            style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : isDark ? "#334155" : "#CBD5E1" }]}
+            disabled={selectedIds.length === 0}
+            onPress={handleDeleteSelected}
+          >
+            <Text className="text-white font-bold text-sm">Eliminar seleccionadas ({selectedIds.length})</Text>
+          </Pressable>
+        </Animated.View>
+      )}
+
     </SafeAreaView>
   );
 }

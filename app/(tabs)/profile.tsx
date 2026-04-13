@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,6 +14,7 @@ import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTransactionStore } from "@/store/use-transactions";
 import { formatCurrency, getTotalByType } from "@/utils/calculations";
+import { DEFAULT_COUNTRY, getCountryCurrencyOptions } from "@/utils/currency";
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -20,16 +22,13 @@ export default function ProfileScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
   const { alert } = useAlert();
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, updateUserProfile } = useAuth();
+  const currencyCode = userProfile?.currencyCode;
+  const selectedCountry = userProfile?.country ?? DEFAULT_COUNTRY;
+  const [countrySearch, setCountrySearch] = useState("");
   const { transactions, loading } = useTransactionStore();
   const [signingOut, setSigningOut] = useState(false);
-  const [animationCycle, setAnimationCycle] = useState(0);
-
-  useFocusEffect(
-    useCallback(() => {
-      setAnimationCycle((prev) => prev + 1);
-    }, [])
-  );
+  const scrollRef = useRef<ScrollView>(null);
 
   const totalIncome = getTotalByType(transactions, "income");
   const totalExpense = getTotalByType(transactions, "expense");
@@ -59,14 +58,35 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleSelectCountry = async (country: string) => {
+    if (country === selectedCountry) return;
+    try {
+      await updateUserProfile({ country });
+    } catch {
+      alert("Error", "No se pudo cambiar el país de divisa. Inténtalo de nuevo.");
+    }
+  };
+
+  const countryOptions = getCountryCurrencyOptions();
+  const visibleCountryOptions = countryOptions.filter((option) => option.country.toLowerCase().includes(countrySearch.trim().toLowerCase()));
+  const selectedCountryOption = countryOptions.find((option) => option.country === selectedCountry);
+
+  useFocusEffect(
+    useCallback(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+      });
+    }, []),
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* ── Header ── */}
         <LinearGradient colors={["#F97316", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <View style={styles.circle1} />
           <View style={styles.circle2} />
-          <Animated.View key={`profile-header-${animationCycle}`} entering={FadeInDown.duration(400).delay(0)} style={styles.profileWrap}>
+          <Animated.View entering={FadeInDown.duration(400).delay(0)} style={styles.profileWrap}>
             <Pressable onPress={() => router.push("/edit-profile")} style={styles.avatar}>
               {userProfile?.photoBase64 ? (
                 <Image source={{ uri: `data:image/jpeg;base64,${userProfile.photoBase64}` }} style={styles.avatarImage} />
@@ -85,13 +105,13 @@ export default function ProfileScreen() {
 
         {/* ── Stats ── */}
         {!loading && (
-          <Animated.View key={`profile-stats-${animationCycle}`} entering={FadeInDown.duration(400).delay(80)} style={styles.statsRow}>
+          <Animated.View entering={FadeInDown.duration(400).delay(80)} style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: cardBg }]}>
-              <Text style={[styles.statValue, { color: INCOME_COLOR }]}>{formatCurrency(totalIncome)}</Text>
+              <Text style={[styles.statValue, { color: INCOME_COLOR }]}>{formatCurrency(totalIncome, currencyCode)}</Text>
               <Text style={[styles.statLabel, { color: colors.muted }]}>Ingresos totales</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: cardBg }]}>
-              <Text style={[styles.statValue, { color: EXPENSE_COLOR }]}>{formatCurrency(totalExpense)}</Text>
+              <Text style={[styles.statValue, { color: EXPENSE_COLOR }]}>{formatCurrency(totalExpense, currencyCode)}</Text>
               <Text style={[styles.statLabel, { color: colors.muted }]}>Gastos totales</Text>
             </View>
           </Animated.View>
@@ -99,12 +119,12 @@ export default function ProfileScreen() {
 
         {/* ── Summary card ── */}
         {!loading && (
-          <Animated.View key={`profile-summary-${animationCycle}`} entering={FadeInDown.duration(400).delay(120)} style={[styles.summaryCard, { backgroundColor: cardBg }]}>
+          <Animated.View entering={FadeInDown.duration(400).delay(120)} style={[styles.summaryCard, { backgroundColor: cardBg }]}>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.muted }]}>Saldo neto</Text>
               <Text style={[styles.summaryValue, { color: balance >= 0 ? INCOME_COLOR : EXPENSE_COLOR }]}>
                 {balance >= 0 ? "+" : ""}
-                {formatCurrency(balance)}
+                {formatCurrency(balance, currencyCode)}
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -116,20 +136,77 @@ export default function ProfileScreen() {
         )}
 
         {/* ── Account info ── */}
-        <Animated.View key={`profile-account-${animationCycle}`} entering={FadeInDown.duration(400).delay(160)} style={[styles.section, { backgroundColor: cardBg }]}>
+        <Animated.View entering={FadeInDown.duration(400).delay(160)} style={[styles.section, { backgroundColor: cardBg }]}>
           <Text style={[styles.sectionTitle, { color: colors.muted }]}>Cuenta</Text>
           <InfoRow icon="mail-outline" label="Correo electrónico" value={user?.email ?? "—"} colors={colors} />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <InfoRow icon="person-outline" label="Nombre" value={user?.displayName ?? "No especificado"} colors={colors} />
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.duration(400).delay(185)} style={[styles.section, { backgroundColor: cardBg }]}>
+          <Text style={[styles.sectionTitle, { color: colors.muted }]}>Categorías</Text>
+          <Pressable style={[styles.manageCategoriesBtn, { borderColor: colors.border, backgroundColor: colors.buttonSecondary }]} onPress={() => router.push("/manage-categories")}>
+            <View style={styles.manageCategoriesLeft}>
+              <View style={[styles.infoIcon, { backgroundColor: PRIMARY + "15" }]}>
+                <Ionicons name="pricetags-outline" size={17} color={PRIMARY} />
+              </View>
+              <View>
+                <Text style={[styles.manageCategoriesTitle, { color: colors.text }]}>Gestionar categorías</Text>
+                <Text style={[styles.manageCategoriesSubtitle, { color: colors.muted }]}>Crear, editar y borrar tus categorías personalizadas</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(400).delay(198)} style={[styles.section, { backgroundColor: cardBg }]}>
+          <Text style={[styles.sectionTitle, { color: colors.muted }]}>País de divisa</Text>
+          {!!selectedCountryOption && (
+            <Text style={[styles.selectedCountryText, { color: colors.muted }]}>
+              Actual: {selectedCountryOption.country} · {selectedCountryOption.code} ({selectedCountryOption.symbol})
+            </Text>
+          )}
+          <View style={[styles.countrySearchWrap, { borderColor: colors.border, backgroundColor: colors.buttonSecondary }]}>
+            <Ionicons name="search-outline" size={16} color={colors.muted} />
+            <TextInput
+              placeholder="Buscar país..."
+              placeholderTextColor={colors.muted}
+              value={countrySearch}
+              onChangeText={setCountrySearch}
+              style={[styles.countrySearchInput, { color: colors.text }]}
+            />
+          </View>
+          <View style={styles.currencyOptions}>
+            {visibleCountryOptions.map((option) => {
+              const selected = option.country === selectedCountry;
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => handleSelectCountry(option.country)}
+                  style={[
+                    styles.currencyChip,
+                    {
+                      borderColor: selected ? PRIMARY : colors.border,
+                      backgroundColor: selected ? PRIMARY + "20" : colors.buttonSecondary,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: selected ? PRIMARY : colors.text, fontWeight: selected ? "700" : "500", fontSize: 12 }}>
+                    {option.country} · {option.code} ({option.symbol})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+
         {/* ── Theme Selector ── */}
-        <Animated.View key={`profile-theme-${animationCycle}`} entering={FadeInDown.duration(400).delay(210)}>
+        <Animated.View entering={FadeInDown.duration(400).delay(210)}>
           <ThemeSelector />
         </Animated.View>
 
         {/* ── Sign out ── */}
-        <Animated.View key={`profile-signout-${animationCycle}`} entering={FadeInDown.duration(400).delay(250)} style={{ marginHorizontal: 20 }}>
+        <Animated.View entering={FadeInDown.duration(400).delay(250)} style={{ marginHorizontal: 20 }}>
           <Pressable style={[styles.signOutBtn, { opacity: signingOut ? 0.6 : 1 }]} onPress={handleSignOut} disabled={signingOut}>
             {signingOut ? (
               <ActivityIndicator color="#EF4444" />
@@ -242,6 +319,47 @@ const styles = StyleSheet.create({
   infoIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   infoLabel: { fontSize: 11, marginBottom: 2 },
   infoValue: { fontSize: 14, fontWeight: "500" },
+  manageCategoriesBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  manageCategoriesLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 8 },
+  manageCategoriesTitle: { fontSize: 14, fontWeight: "700" },
+  manageCategoriesSubtitle: { fontSize: 11, marginTop: 1 },
+  currencyOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  currencyChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  countrySearchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginBottom: 8,
+  },
+  countrySearchInput: {
+    fontSize: 13,
+    flex: 1,
+  },
+  selectedCountryText: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
   signOutBtn: {
     marginTop: 16,
     borderRadius: 14,

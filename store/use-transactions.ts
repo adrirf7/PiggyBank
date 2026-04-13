@@ -1,7 +1,7 @@
 import { useAuth } from "@/context/auth";
 import { db } from "@/lib/firebase";
 import { Transaction } from "@/types";
-import { addDoc, collection, deleteDoc, doc, increment, onSnapshot, orderBy, query, writeBatch } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, increment, onSnapshot, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 
 export function useTransactionStore() {
@@ -15,9 +15,56 @@ export function useTransactionStore() {
     await addDoc(collection(db, "users", user.uid, "transactions"), data);
   };
 
+  const updateTransaction = async (id: string, data: Omit<Transaction, "id">) => {
+    if (!user) return;
+    await setDoc(doc(db, "users", user.uid, "transactions", id), data);
+  };
+
   const deleteTransaction = async (id: string) => {
     if (!user) return;
+    const transaction = transactions.find((tx) => tx.id === id);
+
+    if (transaction?.isGoalContribution && transaction.goalId) {
+      await deleteGoalContribution(id, transaction);
+      return;
+    }
+
     await deleteDoc(doc(db, "users", user.uid, "transactions", id));
+  };
+
+  const deleteTransactions = async (items: Transaction[]) => {
+    if (!user || items.length === 0) return;
+
+    const batch = writeBatch(db);
+    const seenIds = new Set<string>();
+    const goalAdjustments = new Map<string, number>();
+
+    for (const transaction of items) {
+      if (seenIds.has(transaction.id)) continue;
+      seenIds.add(transaction.id);
+
+      const transactionRef = doc(db, "users", user.uid, "transactions", transaction.id);
+      batch.delete(transactionRef);
+
+      if (transaction.isGoalContribution && transaction.goalId) {
+        const amountChange = transaction.type === "income" ? -transaction.amount : transaction.amount;
+        goalAdjustments.set(transaction.goalId, (goalAdjustments.get(transaction.goalId) || 0) + amountChange);
+      }
+    }
+
+    for (const [goalId, amountChange] of goalAdjustments.entries()) {
+      const goalRef = doc(db, "users", user.uid, "goals", goalId);
+      const goalSnap = await getDoc(goalRef);
+      if (!goalSnap.exists()) {
+        console.warn(`Goal not found while deleting transactions: ${goalId}`);
+        continue;
+      }
+      batch.update(goalRef, {
+        currentAmount: increment(amountChange),
+      });
+    }
+
+    await batch.commit();
   };
 
   /**
@@ -34,10 +81,15 @@ export function useTransactionStore() {
 
     // 2. Revertir el cambio en el currentAmount del objetivo
     const goalRef = doc(db, "users", user.uid, "goals", transaction.goalId);
-    const amountChange = transaction.type === "income" ? -transaction.amount : transaction.amount;
-    batch.update(goalRef, {
-      currentAmount: increment(amountChange),
-    });
+    const goalSnap = await getDoc(goalRef);
+    if (goalSnap.exists()) {
+      const amountChange = transaction.type === "income" ? -transaction.amount : transaction.amount;
+      batch.update(goalRef, {
+        currentAmount: increment(amountChange),
+      });
+    } else {
+      console.warn(`Goal not found while deleting goal contribution: ${transaction.goalId}`);
+    }
 
     // 3. Ejecutar batch
     await batch.commit();
@@ -68,6 +120,7 @@ export function useTransactionStore() {
       category: "savings-goal", // Categoría especial para objetivos
       description: data.description,
       date: data.date,
+      createdAt: new Date().toISOString(),
       goalId: data.goalId,
       isGoalContribution: true,
       ...(data.recurrence && { recurrence: data.recurrence }),
@@ -189,5 +242,15 @@ export function useTransactionStore() {
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [transactions, loading, user]);
 
-  return { transactions, loading, addTransaction, deleteTransaction, addGoalContribution, deleteGoalContribution, updateGoalContribution };
+  return {
+    transactions,
+    loading,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    deleteTransactions,
+    addGoalContribution,
+    deleteGoalContribution,
+    updateGoalContribution,
+  };
 }

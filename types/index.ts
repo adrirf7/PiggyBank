@@ -9,6 +9,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string; // ISO date "YYYY-MM-DD"
+  createdAt?: string; // ISO datetime for ordering inside same day
   recurrence?: RecurrenceType;
   recurrenceMonthDay?: number; // For monthly/quarterly: which day of month (1-31)
   recurrenceWeekDay?: number; // For weekly: which day of week (0-6, 0=Sunday)
@@ -22,6 +23,9 @@ export interface Category {
   icon: string;
   color: string;
   type: TransactionType;
+  isDefault?: boolean;
+  isDeleted?: boolean;
+  baseCategoryId?: string;
 }
 
 export interface SavingsGoal {

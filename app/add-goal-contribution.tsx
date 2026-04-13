@@ -7,11 +7,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, Layout } from "react-native-reanimated";
 
 import { Colors } from "@/constants/theme";
+import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { RecurrenceType } from "@/types";
+import { getCurrencySymbol } from "@/utils/currency";
+import { formatCurrency } from "@/utils/calculations";
 
 const RECURRENCE_OPTIONS: { key: RecurrenceType; label: string; icon: string }[] = [
   { key: "none", label: "Una vez", icon: "radio-button-off-outline" },
@@ -30,6 +33,7 @@ export default function AddGoalContributionScreen() {
   const isDark = colorScheme === "dark";
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
+  const { userProfile } = useAuth();
   const { alert } = useAlert();
   const { goalId, type: initialType, amount: initialAmount, transactionId, description: initialDescription } = useLocalSearchParams<{
     goalId: string;
@@ -111,6 +115,7 @@ export default function AddGoalContributionScreen() {
 
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
   const activeColor = type === "add" ? "#22C55E" : "#EF4444";
+  const currencySymbol = getCurrencySymbol(userProfile?.currencyCode ?? "EUR");
 
   if (!goal) {
     return (
@@ -243,7 +248,7 @@ export default function AddGoalContributionScreen() {
 
     // Validar que no se retire más de lo disponible (pero no si estamos editando)
     if (!isEditing && type === "remove" && numAmount > goal.currentAmount) {
-      alert("Importe excedido", `No puedes retirar más de ${goal.currentAmount.toFixed(2)}€ (cantidad actual en el objetivo).`);
+      alert("Importe excedido", `No puedes retirar más de ${formatCurrency(goal.currentAmount)} (cantidad actual en el objetivo).`);
       return;
     }
 
@@ -306,7 +311,7 @@ export default function AddGoalContributionScreen() {
             <View className="flex-1">
               <Text className="text-sm font-bold text-slate-800 dark:text-slate-100">{goal.name}</Text>
               <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                Actual: {goal.currentAmount.toFixed(2)}€ / {goal.targetAmount.toFixed(2)}€
+                Actual: {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
               </Text>
             </View>
           </View>
@@ -330,7 +335,7 @@ export default function AddGoalContributionScreen() {
           <View className="px-5 mb-5">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Importe</Text>
-              {type === "add" && maxAllowed > 0 && <Text className="text-xs text-slate-400 dark:text-slate-500">Máx: {maxAllowed.toFixed(2)}€</Text>}
+              {type === "add" && maxAllowed > 0 && <Text className="text-xs text-slate-400 dark:text-slate-500">Máx: {formatCurrency(maxAllowed)}</Text>}
             </View>
             <View className="rounded-2xl px-4 py-4 flex-row items-center gap-x-3" style={[styles.inputCard, { backgroundColor: cardBg }]}>
               <Ionicons name="cash-outline" size={22} color={activeColor} />
@@ -344,7 +349,7 @@ export default function AddGoalContributionScreen() {
                 keyboardType="decimal-pad"
                 maxLength={12}
               />
-              <Text className="text-lg font-semibold text-slate-400">€</Text>
+              <Text className="text-lg font-semibold text-slate-400">{currencySymbol}</Text>
             </View>
             {type === "add" && maxAllowed === 0 && <Text className="text-xs text-amber-500 mt-2">⚠️ El objetivo ya está completado</Text>}
           </View>

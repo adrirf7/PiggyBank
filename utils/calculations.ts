@@ -1,4 +1,5 @@
 import { Period, Transaction } from "@/types";
+import { getCurrentCurrencyCode } from "@/utils/currency";
 import {
     addDays,
     endOfMonth,
@@ -233,17 +234,28 @@ export function getChartDataForPeriod(transactions: Transaction[], period: Perio
   }
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currencyCode: string = getCurrentCurrencyCode()): string {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
-    currency: "EUR",
+    currency: currencyCode,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
 }
 
+export function compareTransactionsNewestFirst(a: Transaction, b: Transaction): number {
+  const byDate = new Date(b.date).getTime() - new Date(a.date).getTime();
+  if (byDate !== 0) return byDate;
+
+  const aCreatedAt = a.createdAt ? Date.parse(a.createdAt) : 0;
+  const bCreatedAt = b.createdAt ? Date.parse(b.createdAt) : 0;
+  if (aCreatedAt !== bCreatedAt) return bCreatedAt - aCreatedAt;
+
+  return b.id.localeCompare(a.id);
+}
+
 export function groupTransactionsByDate(transactions: Transaction[]): { date: string; label: string; items: Transaction[] }[] {
-  const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sorted = [...transactions].sort(compareTransactionsNewestFirst);
 
   const groups: Record<string, Transaction[]> = {};
   sorted.forEach((t) => {
