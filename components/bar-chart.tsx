@@ -17,25 +17,10 @@ interface Props {
   isDark?: boolean;
   currencyCode?: string;
   onTouchActiveChange?: (isActive: boolean) => void;
-  onHorizontalSwipe?: (direction: "left" | "right") => void;
-  allowHorizontalSwipe?: boolean;
 }
 
 const INCOME_COLOR = "#22C55E";
 const EXPENSE_COLOR = "#EF4444";
-
-function getNiceMax(val: number): number {
-  if (val <= 0) return 100;
-  const exp = Math.floor(Math.log10(val));
-  const magnitude = Math.pow(10, exp);
-  const fraction = val / magnitude;
-  let nice: number;
-  if (fraction <= 1) nice = 1;
-  else if (fraction <= 2) nice = 2;
-  else if (fraction <= 5) nice = 5;
-  else nice = 10;
-  return nice * magnitude;
-}
 
 function formatYVal(val: number): string {
   if (val === 0) return "0";
@@ -52,11 +37,8 @@ export default function BarChart({
   isDark = false,
   currencyCode,
   onTouchActiveChange,
-  onHorizontalSwipe,
-  allowHorizontalSwipe = false,
 }: Props) {
-  if (data.length === 0) return null;
-
+  const hasData = data.length > 0;
   const yAxisWidth = 32;
   const chartPaddingRight = 8;
   const chartPaddingTop = 10;
@@ -97,7 +79,7 @@ export default function BarChart({
   const yStep = yNiceFraction * yMagnitude;
   const yMax = yStep * yIntervals;
 
-  const groupWidth = drawWidth / data.length;
+  const groupWidth = drawWidth / Math.max(data.length, 1);
   const barWidth = Math.min(groupWidth * 0.35, 14);
   const gap = 2;
 
@@ -186,8 +168,6 @@ export default function BarChart({
 
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressStartRef = useRef<{ pageX: number; pageY: number } | null>(null);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const swipeConsumedRef = useRef(false);
   const lastLocationXRef = useRef<number>(yAxisWidth);
   const chartBoundsRef = useRef<{ left: number; width: number }>({ left: 0, width: svgWidth });
   const chartContainerRef = useRef<View>(null);
@@ -233,8 +213,6 @@ export default function BarChart({
       clearLongPressTimer();
       const { pageX, pageY } = event.nativeEvent;
       pressStartRef.current = { pageX, pageY };
-      swipeStartRef.current = { x: pageX, y: pageY };
-      swipeConsumedRef.current = false;
       lastLocationXRef.current = getRelativeX(event);
 
       longPressTimeoutRef.current = setTimeout(() => {
@@ -247,18 +225,6 @@ export default function BarChart({
   const handleTouchMove = useCallback(
     (event: NativeSyntheticEvent<NativeTouchEvent>) => {
       const { pageX, pageY } = event.nativeEvent;
-      const swipeStart = swipeStartRef.current;
-      if (allowHorizontalSwipe && swipeStart && !touchState.isActive && !swipeConsumedRef.current) {
-        const dx = pageX - swipeStart.x;
-        const dy = pageY - swipeStart.y;
-        if (Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 1.3) {
-          swipeConsumedRef.current = true;
-          clearLongPressTimer();
-          pressStartRef.current = null;
-          onHorizontalSwipe?.(dx < 0 ? "left" : "right");
-          return;
-        }
-      }
       const relativeX = getRelativeX(event);
       lastLocationXRef.current = relativeX;
 
@@ -277,12 +243,10 @@ export default function BarChart({
         pressStartRef.current = null;
       }
     },
-    [allowHorizontalSwipe, clearLongPressTimer, getRelativeX, onHorizontalSwipe, touchState.isActive, updateTouchAtX],
+    [clearLongPressTimer, getRelativeX, touchState.isActive, updateTouchAtX],
   );
 
   const handleTouchEnd = useCallback(() => {
-    swipeStartRef.current = null;
-    swipeConsumedRef.current = false;
     if (!touchState.isActive) {
       clearLongPressTimer();
       pressStartRef.current = null;
@@ -303,6 +267,15 @@ export default function BarChart({
     updateChartBounds();
   }, [updateChartBounds]);
 
+  const shouldStartResponder = useCallback(() => false, []);
+  const shouldMoveResponder = useCallback(() => touchState.isActive, [touchState.isActive]);
+  const shouldAllowTermination = useCallback(() => false, []);
+  const handleResponderTerminate = useCallback(() => {
+    deactivateTouch();
+  }, [deactivateTouch]);
+
+  if (!hasData) return null;
+
   return (
     <View ref={chartContainerRef} className="w-full" onLayout={updateChartBounds}>
       <Svg
@@ -310,15 +283,15 @@ export default function BarChart({
         height={svgHeight}
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         style={{ alignSelf: "center" }}
-        onStartShouldSetResponder={() => false}
-        onMoveShouldSetResponder={() => touchState.isActive}
-        onResponderTerminationRequest={() => false}
+        onStartShouldSetResponder={shouldStartResponder}
+        onMoveShouldSetResponder={shouldMoveResponder}
+        onResponderTerminationRequest={shouldAllowTermination}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         onResponderRelease={deactivateTouch}
-        onResponderTerminate={() => {}}
+        onResponderTerminate={handleResponderTerminate}
       >
         {/* Y-axis labels */}
         {yLines.map((ratio) => {
@@ -349,12 +322,12 @@ export default function BarChart({
         })}
 
         {/* Bars */}
-        {barsMeta.map((item, i) => {
+        {barsMeta.map((item) => {
           const labelY = height + bottomLabelHeight - 5;
           const labelX = item.groupX;
 
           return (
-            <G key={i}>
+            <G key={`${item.group.label}-${item.groupX}`}>
               <Rect x={item.income.x} y={item.income.y} width={item.income.width} height={item.income.height} rx={3} ry={3} fill={incomeColor} opacity={0.9} />
               <Rect x={item.expense.x} y={item.expense.y} width={item.expense.width} height={item.expense.height} rx={3} ry={3} fill={expenseColor} opacity={0.9} />
               <SvgText

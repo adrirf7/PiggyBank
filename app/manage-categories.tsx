@@ -71,6 +71,7 @@ export default function ManageCategoriesScreen() {
     const selectedSet = new Set(selectedIds);
     return filteredCategories.filter((category) => selectedSet.has(category.id));
   }, [filteredCategories, selectedIds]);
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   React.useEffect(() => {
     if (selectorPillWidth <= 0) return;
@@ -396,7 +397,7 @@ export default function ManageCategoriesScreen() {
                 </View>
               ) : (
                 filteredCategories.map((category, index) => {
-                  const selected = selectedIds.includes(category.id);
+                  const selected = selectedIdSet.has(category.id);
                   return (
                     <Pressable
                       key={category.id}

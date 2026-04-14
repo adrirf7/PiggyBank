@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -14,15 +14,16 @@ import { useAuth } from "@/context/auth";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
-import { TransactionType } from "@/types";
+import { Transaction, TransactionType } from "@/types";
 import { formatCurrency, groupTransactionsByDate } from "@/utils/calculations";
 
-type Filter = "all" | TransactionType;
+type Filter = "all" | TransactionType | "recurring";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "income", label: "Ingresos" },
   { key: "expense", label: "Gastos" },
+  { key: "recurring", label: "Recurrentes" },
 ];
 
 export default function TransactionsScreen() {
@@ -31,11 +32,12 @@ export default function TransactionsScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const { alert } = useAlert();
   const { userProfile } = useAuth();
-  const { transactions, deleteTransactions } = useTransactionStore();
+  const { transactions, deleteTransactions, loading: transactionsLoading } = useTransactionStore();
   const { getCategoryById, allCategories } = useCategoriesStore();
-  const { goals } = useSavingsGoalStore();
+  const { goals, loading: goalsLoading } = useSavingsGoalStore();
   const searchParams = useLocalSearchParams();
   const router = useRouter();
+  const isLoadingData = transactionsLoading || goalsLoading;
 
   const initialFilter = (searchParams.filter as Filter) || "all";
   const focusTransactionId = typeof searchParams.focusTransactionId === "string" ? searchParams.focusTransactionId : null;
@@ -45,8 +47,13 @@ export default function TransactionsScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const listRef = useRef<FlatList<any>>(null);
+  const handledFocusKeyRef = useRef<string | null>(null);
   const [filterSlideDirection, setFilterSlideDirection] = useState<"left" | "right">("left");
   const [highlightedTransactionId, setHighlightedTransactionId] = useState<string | null>(null);
+  const focusKey = useMemo(
+    () => (focusTransactionId ? `${focusTransactionId}:${focusNonce ?? "default"}` : null),
+    [focusTransactionId, focusNonce],
+  );
 
   const clearSelection = useCallback(() => {
     setSelectionMode(false);
@@ -88,8 +95,13 @@ export default function TransactionsScreen() {
   );
 
   const filtered = useMemo(() => {
+    if (isLoadingData) return [];
     let result = transactions;
-    if (filter !== "all") result = result.filter((t) => t.type === filter);
+    if (filter === "recurring") {
+      result = result.filter((t) => t.recurrence && t.recurrence !== "none");
+    } else if (filter !== "all") {
+      result = result.filter((t) => t.type === filter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((t) => {
@@ -98,7 +110,7 @@ export default function TransactionsScreen() {
       });
     }
     return result;
-  }, [transactions, filter, search, getCategoryById]);
+  }, [transactions, filter, search, getCategoryById, isLoadingData]);
 
   useEffect(() => {
     if (!selectionMode) return;
@@ -117,6 +129,7 @@ export default function TransactionsScreen() {
     const selectedSet = new Set(selectedIds);
     return transactions.filter((tx) => selectedSet.has(tx.id));
   }, [transactions, selectedIds]);
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -157,21 +170,71 @@ export default function TransactionsScreen() {
     ]);
   };
 
-  const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalIncome = useMemo(() => transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0), [transactions]);
+  const totalExpense = useMemo(() => transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0), [transactions]);
+  const recurringIncome = useMemo(
+    () => transactions.filter((t) => t.type === "income" && t.recurrence && t.recurrence !== "none").reduce((s, t) => s + t.amount, 0),
+    [transactions],
+  );
+  const recurringExpense = useMemo(
+    () => transactions.filter((t) => t.type === "expense" && t.recurrence && t.recurrence !== "none").reduce((s, t) => s + t.amount, 0),
+    [transactions],
+  );
+  const recurringCount = useMemo(() => transactions.filter((t) => t.recurrence && t.recurrence !== "none").length, [transactions]);
+
+  const renderTransaction = useCallback(
+    ({ item: tx, index }: { item: Transaction; index: number }) => {
+      const currentDate = tx.date.slice(0, 10);
+      const previousDate = index > 0 ? flatFilteredTransactions[index - 1].date.slice(0, 10) : null;
+      const shouldShowDateHeader = currentDate !== previousDate;
+      const dateLabel = dateLabelByDate.get(currentDate) ?? "";
+
+      return (
+        <View>
+          {shouldShowDateHeader && dateLabel.length > 0 && (
+            <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{dateLabel}</Text>
+          )}
+          <TransactionItem
+            transaction={tx}
+            goalById={goalById}
+            categoriesById={categoriesById}
+            selectable={selectionMode}
+            selected={selectedIdSet.has(tx.id)}
+            onPress={selectionMode ? toggleSelected : handleEditTransaction}
+            onLongPress={enterSelectionMode}
+            animated={false}
+            highlightPulse={highlightedTransactionId === tx.id}
+          />
+        </View>
+      );
+    },
+    [
+      flatFilteredTransactions,
+      dateLabelByDate,
+      goalById,
+      categoriesById,
+      selectionMode,
+      selectedIdSet,
+      highlightedTransactionId,
+    ],
+  );
 
   useEffect(() => {
-    if (!focusTransactionId) {
+    if (!focusTransactionId || !focusKey) {
       setHighlightedTransactionId(null);
+      handledFocusKeyRef.current = null;
+      return;
+    }
+    if (handledFocusKeyRef.current === focusKey) {
       return;
     }
 
     const index = flatFilteredTransactions.findIndex((tx) => tx.id === focusTransactionId);
     if (index < 0) {
-      setHighlightedTransactionId(null);
       return;
     }
 
+    handledFocusKeyRef.current = focusKey;
     requestAnimationFrame(() => {
       setHighlightedTransactionId(null);
       listRef.current?.scrollToIndex({
@@ -183,7 +246,15 @@ export default function TransactionsScreen() {
         setHighlightedTransactionId(focusTransactionId);
       });
     });
-  }, [focusTransactionId, focusNonce, flatFilteredTransactions]);
+  }, [focusKey, focusTransactionId, flatFilteredTransactions]);
+
+  useEffect(() => {
+    if (!highlightedTransactionId) return;
+    const timeout = setTimeout(() => {
+      setHighlightedTransactionId((current) => (current === highlightedTransactionId ? null : current));
+    }, 900);
+    return () => clearTimeout(timeout);
+  }, [highlightedTransactionId]);
 
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -200,7 +271,7 @@ export default function TransactionsScreen() {
         <Text className="text-sm text-slate-400 dark:text-slate-500">
           {selectionMode
             ? `${selectedIds.length} seleccionada${selectedIds.length === 1 ? "" : "s"} · Mantén pulsado para seleccionar`
-            : `${transactions.length} transacciones registradas · Mantén pulsado para seleccionar`}
+            : `${transactions.length} transacciones registradas · ${recurringCount} recurrentes · Mantén pulsado para seleccionar`}
         </Text>
       </Animated.View>
 
@@ -230,6 +301,31 @@ export default function TransactionsScreen() {
         </View>
       </Animated.View>
 
+      <Animated.View entering={FadeInDown.duration(400).delay(80)} className="flex-row mx-5 mb-4 gap-x-3">
+        <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: INCOME_COLOR + "10" }}>
+          <Ionicons name="repeat-outline" size={16} color={INCOME_COLOR} />
+          <View>
+            <Text className="text-xs" style={{ color: INCOME_COLOR + "CC" }}>
+              Ingresos recurrentes
+            </Text>
+            <Text className="text-sm font-bold" style={{ color: INCOME_COLOR }}>
+              {formatCurrency(recurringIncome, userProfile?.currencyCode)}
+            </Text>
+          </View>
+        </View>
+        <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: EXPENSE_COLOR + "10" }}>
+          <Ionicons name="repeat-outline" size={16} color={EXPENSE_COLOR} />
+          <View>
+            <Text className="text-xs" style={{ color: EXPENSE_COLOR + "CC" }}>
+              Gastos recurrentes
+            </Text>
+            <Text className="text-sm font-bold" style={{ color: EXPENSE_COLOR }}>
+              {formatCurrency(recurringExpense, userProfile?.currencyCode)}
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
+
       {/* ── Search ── */}
       <Animated.View entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
         <Ionicons name="search-outline" size={18} color={colors.muted} />
@@ -249,7 +345,7 @@ export default function TransactionsScreen() {
       </Animated.View>
 
       {/* ── Filter chips ── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(140)} className="flex-row mx-5 mb-4 gap-x-2">
+      <Animated.View entering={FadeInDown.duration(400).delay(140)} className="flex-row flex-wrap mx-5 mb-4 gap-2">
         {FILTERS.map(({ key, label }) => {
           const active = filter === key;
           return (
@@ -277,7 +373,12 @@ export default function TransactionsScreen() {
       </Animated.View>
 
       {/* ── List ── */}
-      {grouped.length === 0 ? (
+      {isLoadingData ? (
+        <View className="flex-1 items-center justify-center px-5">
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text className="text-sm text-slate-500 dark:text-slate-400 mt-3">Cargando transacciones...</Text>
+        </View>
+      ) : grouped.length === 0 ? (
         <Animated.View entering={FadeInDown.duration(400).delay(180)} className="flex-1 items-center justify-center">
           <View className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: PRIMARY + "15" }}>
             <Ionicons name={search ? "search-outline" : "document-text-outline"} size={32} color={PRIMARY} />
@@ -297,6 +398,11 @@ export default function TransactionsScreen() {
             ref={listRef}
             data={flatFilteredTransactions}
             keyExtractor={(item) => item.id}
+            initialNumToRender={10}
+            maxToRenderPerBatch={8}
+            windowSize={7}
+            updateCellsBatchingPeriod={50}
+            removeClippedSubviews
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
             onScrollToIndexFailed={(info) => {
@@ -311,31 +417,7 @@ export default function TransactionsScreen() {
               }, 180);
             }}
             ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-            renderItem={({ item: tx, index }) => {
-              const currentDate = tx.date.slice(0, 10);
-              const previousDate = index > 0 ? flatFilteredTransactions[index - 1].date.slice(0, 10) : null;
-              const shouldShowDateHeader = currentDate !== previousDate;
-              const dateLabel = dateLabelByDate.get(currentDate) ?? "";
-
-              return (
-                <View>
-                  {shouldShowDateHeader && dateLabel.length > 0 && (
-                    <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{dateLabel}</Text>
-                  )}
-                  <TransactionItem
-                    transaction={tx}
-                    goalById={goalById}
-                    categoriesById={categoriesById}
-                    selectable={selectionMode}
-                    selected={selectedIds.includes(tx.id)}
-                    onPress={selectionMode ? toggleSelected : handleEditTransaction}
-                    onLongPress={enterSelectionMode}
-                    animated={false}
-                    highlightPulse={highlightedTransactionId === tx.id}
-                  />
-                </View>
-              );
-            }}
+            renderItem={renderTransaction}
           />
         </Animated.View>
       )}

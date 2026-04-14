@@ -69,7 +69,9 @@ export default function AnalyticsScreen() {
   const [primaryChartMode, setPrimaryChartMode] = useState<PrimaryChartMode>("bars");
   const [isPrimaryChartModeOpen, setIsPrimaryChartModeOpen] = useState(false);
   const [monthXAxisMode, setMonthXAxisMode] = useState<MonthXAxisMode>("weeks");
+  const [mixedMonthXAxisMode, setMixedMonthXAxisMode] = useState<MonthXAxisMode>("weeks");
   const [chartSwipeDirection, setChartSwipeDirection] = useState<"left" | "right">("left");
+  const [mixedChartSwipeDirection, setMixedChartSwipeDirection] = useState<"left" | "right">("left");
   const [mixedMode, setMixedMode] = useState<MixedMode>("expense-categories");
   const [isMixedModeOpen, setIsMixedModeOpen] = useState(false);
   const [isChartTouchActive, setIsChartTouchActive] = useState(false);
@@ -111,7 +113,6 @@ export default function AnalyticsScreen() {
   }, [chartData, period, referenceDate, transactions]);
   const primaryChartData = period === "month" && monthXAxisMode === "days" ? chartDataDailyMonth : chartData;
   const categoriesById = useMemo(() => new Map<string, Category>(allCategories.map((category) => [category.id, category])), [allCategories]);
-  const chartLabels = useMemo(() => chartData.map((d) => d.label), [chartData]);
   const primarySeriesHasData = useMemo(() => {
     const length = primaryChartData.length;
     const income = Array.from({ length }, () => false);
@@ -178,6 +179,8 @@ export default function AnalyticsScreen() {
     label: categoriesById.get(d.category)?.name ?? d.category,
   }));
 
+  const mixedChartData = period === "month" && mixedMonthXAxisMode === "days" ? chartDataDailyMonth : chartData;
+  const mixedChartLabels = mixedChartData.map((d) => d.label);
   const mixedSeries = useMemo<MixedSeries[]>(() => {
     const source = mixedMode === "expense-categories" ? expenseBreakdown : incomeBreakdown;
     const type = mixedMode === "expense-categories" ? "expense" : "income";
@@ -187,7 +190,7 @@ export default function AnalyticsScreen() {
       key: item.category,
       label: categoriesById.get(item.category)?.name ?? item.category,
       color: categoriesById.get(item.category)?.color ?? (type === "expense" ? EXPENSE_COLOR : INCOME_COLOR),
-      values: chartLabels.map((_, index) => {
+      values: mixedChartLabels.map((_, index) => {
         const bucket = filtered.filter((t) => {
           if (t.isGoalContribution || t.type !== type || t.category !== item.category) return false;
           const d = parseISO(t.date);
@@ -196,6 +199,9 @@ export default function AnalyticsScreen() {
             return day === index;
           }
           if (period === "month") {
+            if (mixedMonthXAxisMode === "days") {
+              return d.getDate() - 1 === index;
+            }
             const week = Math.floor((d.getDate() - 1) / 7);
             return week === index;
           }
@@ -204,7 +210,7 @@ export default function AnalyticsScreen() {
         return bucket.reduce((sum, tx) => sum + tx.amount, 0);
       }),
     }));
-  }, [chartData, chartLabels, mixedMode, expenseBreakdown, incomeBreakdown, categoriesById, filtered, period]);
+  }, [mixedChartLabels, mixedMode, expenseBreakdown, incomeBreakdown, categoriesById, filtered, period, mixedMonthXAxisMode]);
 
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
   const currency = userProfile?.currencyCode;
@@ -285,6 +291,14 @@ export default function AnalyticsScreen() {
       if (period !== "month") return;
       setChartSwipeDirection(direction);
       setMonthXAxisMode((prev) => (prev === "weeks" ? "days" : "weeks"));
+    },
+    [period],
+  );
+  const toggleMixedMonthXAxisMode = useCallback(
+    (direction: "left" | "right") => {
+      if (period !== "month") return;
+      setMixedChartSwipeDirection(direction);
+      setMixedMonthXAxisMode((prev) => (prev === "weeks" ? "days" : "weeks"));
     },
     [period],
   );
@@ -455,9 +469,25 @@ export default function AnalyticsScreen() {
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">{chartTitle}</Text>
               <Text className="text-xs text-slate-400 dark:text-slate-500 mb-4">{periodRangeLabel}</Text>
               {period === "month" && (
-                <Text className="text-[11px] text-slate-400 dark:text-slate-500 mb-2">
-                  Desliza en el gráfico para cambiar X: {monthXAxisMode === "weeks" ? "semanas" : "días"}
-                </Text>
+                <View className="flex-row items-center gap-x-2 mb-2">
+                  <Pressable
+                    className="w-6 h-6 rounded-full items-center justify-center"
+                    style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+                    onPress={() => toggleMonthXAxisModeBySwipe("right")}
+                  >
+                    <Ionicons name="chevron-back" size={12} color={colors.muted} />
+                  </Pressable>
+                  <Text className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Eje X: {monthXAxisMode === "weeks" ? "semanas" : "días"}
+                  </Text>
+                  <Pressable
+                    className="w-6 h-6 rounded-full items-center justify-center"
+                    style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+                    onPress={() => toggleMonthXAxisModeBySwipe("left")}
+                  >
+                    <Ionicons name="chevron-forward" size={12} color={colors.muted} />
+                  </Pressable>
+                </View>
               )}
             </View>
             <View className="relative">
@@ -497,8 +527,6 @@ export default function AnalyticsScreen() {
                   isDark={isDark}
                   currencyCode={currency}
                   onTouchActiveChange={setIsChartTouchActive}
-                  onHorizontalSwipe={toggleMonthXAxisModeBySwipe}
-                  allowHorizontalSwipe={period === "month"}
                 />
               ) : (
                 <MixedAreaChart
@@ -525,8 +553,6 @@ export default function AnalyticsScreen() {
                   isDark={isDark}
                   currency={currency}
                   onTouchActiveChange={setIsChartTouchActive}
-                  onHorizontalSwipe={toggleMonthXAxisModeBySwipe}
-                  allowHorizontalSwipe={period === "month"}
                 />
               )}
             </Animated.View>
@@ -539,6 +565,27 @@ export default function AnalyticsScreen() {
             <View>
               <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Comparativa avanzada</Text>
               <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{periodRangeLabel}</Text>
+              {period === "month" && (
+                <View className="flex-row items-center gap-x-2 mt-2">
+                  <Pressable
+                    className="w-6 h-6 rounded-full items-center justify-center"
+                    style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+                    onPress={() => toggleMixedMonthXAxisMode("right")}
+                  >
+                    <Ionicons name="chevron-back" size={12} color={colors.muted} />
+                  </Pressable>
+                  <Text className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Eje X: {mixedMonthXAxisMode === "weeks" ? "semanas" : "días"}
+                  </Text>
+                  <Pressable
+                    className="w-6 h-6 rounded-full items-center justify-center"
+                    style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+                    onPress={() => toggleMixedMonthXAxisMode("left")}
+                  >
+                    <Ionicons name="chevron-forward" size={12} color={colors.muted} />
+                  </Pressable>
+                </View>
+              )}
             </View>
             <View className="relative">
               <Pressable
@@ -570,7 +617,13 @@ export default function AnalyticsScreen() {
           {mixedSeries.length === 0 ? (
             <EmptyChartState text="Sin datos para este modo en el período seleccionado" />
           ) : (
-            <MixedAreaChart labels={chartLabels} series={mixedSeries} isDark={isDark} currency={currency} onTouchActiveChange={setIsChartTouchActive} />
+            <Animated.View
+              key={`mixed-chart-${mixedMonthXAxisMode}-${mixedMode}`}
+              entering={mixedChartSwipeDirection === "left" ? SlideInRight.duration(180) : SlideInLeft.duration(180)}
+              exiting={mixedChartSwipeDirection === "left" ? SlideOutLeft.duration(180) : SlideOutRight.duration(180)}
+            >
+              <MixedAreaChart labels={mixedChartLabels} series={mixedSeries} isDark={isDark} currency={currency} onTouchActiveChange={setIsChartTouchActive} />
+            </Animated.View>
           )}
         </View>
 
@@ -822,8 +875,6 @@ function MixedAreaChart({
   isDark,
   currency,
   onTouchActiveChange,
-  onHorizontalSwipe,
-  allowHorizontalSwipe = false,
   lineStyle = "smooth",
 }: {
   labels: string[];
@@ -831,8 +882,6 @@ function MixedAreaChart({
   isDark: boolean;
   currency?: string;
   onTouchActiveChange?: (isActive: boolean) => void;
-  onHorizontalSwipe?: (direction: "left" | "right") => void;
-  allowHorizontalSwipe?: boolean;
   lineStyle?: "smooth" | "straight";
 }) {
   const width = 320;
@@ -901,8 +950,6 @@ function MixedAreaChart({
   const lastXRef = useRef(leftPad);
   const chartBoundsRef = useRef<{ left: number; width: number }>({ left: 0, width });
   const chartContainerRef = useRef<View>(null);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const swipeConsumedRef = useRef(false);
 
   const visibleSeries = useMemo(() => {
     if (!selectedSeriesKey) return renderSeries;
@@ -1014,8 +1061,6 @@ function MixedAreaChart({
     clearTimer();
     const { pageX, pageY } = event.nativeEvent;
     pressStartRef.current = { pageX, pageY };
-    swipeStartRef.current = { x: pageX, y: pageY };
-    swipeConsumedRef.current = false;
     lastXRef.current = getRelativeX(event);
     timerRef.current = setTimeout(() => {
       onTouchActiveChange?.(true);
@@ -1024,18 +1069,6 @@ function MixedAreaChart({
   };
   const onTouchMove = (event: NativeSyntheticEvent<NativeTouchEvent>) => {
     const { pageX, pageY } = event.nativeEvent;
-    const swipeStart = swipeStartRef.current;
-    if (allowHorizontalSwipe && swipeStart && !touchState.active && !swipeConsumedRef.current) {
-      const dx = pageX - swipeStart.x;
-      const dy = pageY - swipeStart.y;
-      if (Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 1.3) {
-        swipeConsumedRef.current = true;
-        clearTimer();
-        pressStartRef.current = null;
-        onHorizontalSwipe?.(dx < 0 ? "left" : "right");
-        return;
-      }
-    }
     const relativeX = getRelativeX(event);
     lastXRef.current = relativeX;
     if (touchState.active) {
@@ -1050,8 +1083,6 @@ function MixedAreaChart({
     }
   };
   const onTouchEnd = () => {
-    swipeStartRef.current = null;
-    swipeConsumedRef.current = false;
     if (!touchState.active) {
       clearTimer();
       pressStartRef.current = null;

@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useRouter } from "expo-router";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback } from "react";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,16 +22,32 @@ export default function SavingsGoalsScreen() {
   const router = useRouter();
   const { alert } = useAlert();
   const { userProfile } = useAuth();
-  const { goals, deleteGoal } = useSavingsGoalStore();
+  const { goals, deleteGoal, loading } = useSavingsGoalStore();
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
   const currencyCode = userProfile?.currencyCode;
 
-  const handleDelete = (goal: SavingsGoal) => {
+  const handleDelete = useCallback((goal: SavingsGoal) => {
     alert("Eliminar objetivo", `¿Eliminar "${goal.name}"?`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Eliminar", style: "destructive", onPress: () => deleteGoal(goal.id) },
     ]);
-  };
+  }, [alert, deleteGoal]);
+
+  const renderGoal = useCallback(
+    ({ item: goal, index }: { item: SavingsGoal; index: number }) => (
+      <Animated.View entering={FadeInDown.duration(400).delay(index * 60)}>
+        <GoalCard
+          goal={goal}
+          cardBg={cardBg}
+          isDark={isDark}
+          currencyCode={currencyCode}
+          onDelete={() => handleDelete(goal)}
+          onPress={() => router.push({ pathname: "/manage-goal", params: { goalId: goal.id } })}
+        />
+      </Animated.View>
+    ),
+    [cardBg, currencyCode, handleDelete, isDark, router],
+  );
 
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -46,8 +62,23 @@ export default function SavingsGoalsScreen() {
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}>
-        {goals.length === 0 ? (
+      {loading ? (
+        <View className="flex-1 items-center justify-center px-5">
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text className="text-sm text-slate-500 dark:text-slate-400 mt-3">Cargando objetivos...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={goals}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews
+          ListEmptyComponent={
           <View className="items-center py-20">
             <View className="w-20 h-20 rounded-full items-center justify-center mb-5" style={{ backgroundColor: PRIMARY + "15" }}>
               <Ionicons name="trophy-outline" size={40} color={PRIMARY} />
@@ -58,21 +89,10 @@ export default function SavingsGoalsScreen() {
               <Text className="text-white font-semibold text-sm">Crear objetivo</Text>
             </Pressable>
           </View>
-        ) : (
-          goals.map((goal, i) => (
-            <Animated.View key={goal.id} entering={FadeInDown.duration(400).delay(i * 60)}>
-              <GoalCard
-                goal={goal}
-                cardBg={cardBg}
-                isDark={isDark}
-                currencyCode={currencyCode}
-                onDelete={() => handleDelete(goal)}
-                onPress={() => router.push({ pathname: "/manage-goal", params: { goalId: goal.id } })}
-              />
-            </Animated.View>
-          ))
-        )}
-      </ScrollView>
+          }
+          renderItem={renderGoal}
+        />
+      )}
     </SafeAreaView>
   );
 }

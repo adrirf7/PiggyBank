@@ -20,11 +20,29 @@ interface Props {
   categoriesById?: Map<string, Category>;
 }
 
+function getRecurrenceLabel(recurrence?: string): string {
+  switch (recurrence) {
+    case "daily":
+      return "Diario";
+    case "weekly":
+      return "Semanal";
+    case "monthly":
+      return "Mensual";
+    case "quarterly":
+      return "Trimestral";
+    case "yearly":
+      return "Anual";
+    default:
+      return "";
+  }
+}
+
 function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectable = false, selected = false, animated = true, highlightPulse = false, goalById, categoriesById }: Props) {
   const colorScheme = useColorScheme();
   const { userProfile } = useAuth();
   const isDark = colorScheme === "dark";
   const isIncome = transaction.type === "income";
+  const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
   const shakeRotation = useSharedValue(0);
   const pulseScale = useSharedValue(1);
 
@@ -95,6 +113,14 @@ function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectab
             {transaction.description || displayName || "Sin descripción"}
           </Text>
           <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{displayName}</Text>
+          {!!recurrenceLabel && (
+            <View className="self-start mt-1 px-2 py-0.5 rounded-full flex-row items-center" style={{ backgroundColor: (isIncome ? "#22C55E" : "#EF4444") + "20" }}>
+              <Ionicons name="repeat-outline" size={11} color={isIncome ? "#22C55E" : "#EF4444"} />
+              <Text className="text-[10px] font-semibold ml-1" style={{ color: isIncome ? "#22C55E" : "#EF4444" }}>
+                {recurrenceLabel}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Amount */}
