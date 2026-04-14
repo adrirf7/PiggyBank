@@ -38,12 +38,15 @@ export default function TransactionsScreen() {
   const router = useRouter();
 
   const initialFilter = (searchParams.filter as Filter) || "all";
+  const focusTransactionId = typeof searchParams.focusTransactionId === "string" ? searchParams.focusTransactionId : null;
+  const focusNonce = typeof searchParams.focusNonce === "string" ? searchParams.focusNonce : null;
   const [filter, setFilter] = useState<Filter>(initialFilter);
   const [search, setSearch] = useState("");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const listRef = useRef<FlatList<any>>(null);
   const [filterSlideDirection, setFilterSlideDirection] = useState<"left" | "right">("left");
+  const [highlightedTransactionId, setHighlightedTransactionId] = useState<string | null>(null);
 
   const clearSelection = useCallback(() => {
     setSelectionMode(false);
@@ -106,6 +109,8 @@ export default function TransactionsScreen() {
   const grouped = useMemo(() => groupTransactionsByDate(filtered), [filtered]);
   const goalById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
   const categoriesById = useMemo(() => new Map(allCategories.map((category) => [category.id, category])), [allCategories]);
+  const flatFilteredTransactions = useMemo(() => grouped.flatMap((group) => group.items), [grouped]);
+  const dateLabelByDate = useMemo(() => new Map(grouped.map((group) => [group.date, group.label])), [grouped]);
 
   const selectedTransactions = useMemo(() => {
     if (selectedIds.length === 0) return [];
@@ -154,6 +159,31 @@ export default function TransactionsScreen() {
 
   const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+
+  useEffect(() => {
+    if (!focusTransactionId) {
+      setHighlightedTransactionId(null);
+      return;
+    }
+
+    const index = flatFilteredTransactions.findIndex((tx) => tx.id === focusTransactionId);
+    if (index < 0) {
+      setHighlightedTransactionId(null);
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      setHighlightedTransactionId(null);
+      listRef.current?.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5,
+      });
+      requestAnimationFrame(() => {
+        setHighlightedTransactionId(focusTransactionId);
+      });
+    });
+  }, [focusTransactionId, focusNonce, flatFilteredTransactions]);
 
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -265,17 +295,34 @@ export default function TransactionsScreen() {
         >
           <FlatList
             ref={listRef}
-            data={grouped}
-            keyExtractor={(item) => item.date}
+            data={flatFilteredTransactions}
+            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-            renderItem={({ item: group }) => (
-              <View>
-                {/* Date label */}
-                <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{group.label}</Text>
-                {group.items.map((tx) => (
+            onScrollToIndexFailed={(info) => {
+              const fallbackOffset = Math.max(0, info.averageItemLength * info.index);
+              listRef.current?.scrollToOffset({ offset: fallbackOffset, animated: true });
+              setTimeout(() => {
+                listRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              }, 180);
+            }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            renderItem={({ item: tx, index }) => {
+              const currentDate = tx.date.slice(0, 10);
+              const previousDate = index > 0 ? flatFilteredTransactions[index - 1].date.slice(0, 10) : null;
+              const shouldShowDateHeader = currentDate !== previousDate;
+              const dateLabel = dateLabelByDate.get(currentDate) ?? "";
+
+              return (
+                <View>
+                  {shouldShowDateHeader && dateLabel.length > 0 && (
+                    <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 mt-4">{dateLabel}</Text>
+                  )}
                   <TransactionItem
-                    key={tx.id}
                     transaction={tx}
                     goalById={goalById}
                     categoriesById={categoriesById}
@@ -284,10 +331,11 @@ export default function TransactionsScreen() {
                     onPress={selectionMode ? toggleSelected : handleEditTransaction}
                     onLongPress={enterSelectionMode}
                     animated={false}
+                    highlightPulse={highlightedTransactionId === tx.id}
                   />
-                ))}
-              </View>
-            )}
+                </View>
+              );
+            }}
           />
         </Animated.View>
       )}

@@ -15,16 +15,18 @@ interface Props {
   selectable?: boolean;
   selected?: boolean;
   animated?: boolean;
+  highlightPulse?: boolean;
   goalById?: Map<string, SavingsGoal>;
   categoriesById?: Map<string, Category>;
 }
 
-function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectable = false, selected = false, animated = true, goalById, categoriesById }: Props) {
+function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectable = false, selected = false, animated = true, highlightPulse = false, goalById, categoriesById }: Props) {
   const colorScheme = useColorScheme();
   const { userProfile } = useAuth();
   const isDark = colorScheme === "dark";
   const isIncome = transaction.type === "income";
   const shakeRotation = useSharedValue(0);
+  const pulseScale = useSharedValue(1);
 
   const { displayIcon, displayColor, displayName } = useMemo(() => {
     const category = categoriesById?.get(transaction.category);
@@ -52,8 +54,18 @@ function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectab
     shakeRotation.value = withTiming(0, { duration: 160 });
   }, [selectable, selected, shakeRotation]);
 
+  useEffect(() => {
+    if (!highlightPulse) return;
+    pulseScale.value = withSequence(
+      withTiming(1.08, { duration: 170 }),
+      withTiming(1, { duration: 170 }),
+      withTiming(1.08, { duration: 170 }),
+      withTiming(1, { duration: 170 }),
+    );
+  }, [highlightPulse, pulseScale]);
+
   const shakeStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateZ: `${shakeRotation.value}deg` }],
+    transform: [{ rotateZ: `${shakeRotation.value}deg` }, { scale: pulseScale.value }],
   }));
 
   return (

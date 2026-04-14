@@ -1,5 +1,6 @@
-import React from "react";
-import { Text, View } from "react-native";
+import { formatCurrency } from "@/utils/calculations";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { NativeSyntheticEvent, NativeTouchEvent, Text, View } from "react-native";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 export interface BarGroup {
@@ -13,6 +14,11 @@ interface Props {
   height?: number;
   incomeColor?: string;
   expenseColor?: string;
+  isDark?: boolean;
+  currencyCode?: string;
+  onTouchActiveChange?: (isActive: boolean) => void;
+  onHorizontalSwipe?: (direction: "left" | "right") => void;
+  allowHorizontalSwipe?: boolean;
 }
 
 const INCOME_COLOR = "#22C55E";
@@ -38,35 +44,288 @@ function formatYVal(val: number): string {
   return `${Math.round(val)}`;
 }
 
-export default function BarChart({ data, height = 180, incomeColor = INCOME_COLOR, expenseColor = EXPENSE_COLOR }: Props) {
+export default function BarChart({
+  data,
+  height = 180,
+  incomeColor = INCOME_COLOR,
+  expenseColor = EXPENSE_COLOR,
+  isDark = false,
+  currencyCode,
+  onTouchActiveChange,
+  onHorizontalSwipe,
+  allowHorizontalSwipe = false,
+}: Props) {
   if (data.length === 0) return null;
 
-  const yAxisWidth = 38;
+  const yAxisWidth = 32;
   const chartPaddingRight = 8;
   const chartPaddingTop = 10;
-  const bottomLabelHeight = 22;
+  const verticalXLabels = data.length > 12;
+  const bottomLabelHeight = 20;
   const svgHeight = height + bottomLabelHeight;
   const svgWidth = 320;
   const drawWidth = svgWidth - yAxisWidth - chartPaddingRight;
 
   const maxVal = Math.max(...data.flatMap((d) => [d.income, d.expense]), 1);
-  const niceMax = getNiceMax(maxVal);
+  const paddedMaxVal = maxVal * 1.12;
+  const nonZeroValues = data.flatMap((d) => [d.income, d.expense]).filter((v) => v > 0);
+  const minNonZeroVal = nonZeroValues.length > 0 ? Math.max(1, Math.min(...nonZeroValues)) : 1;
+  const rangeRatio = paddedMaxVal / minNonZeroVal;
+  const yIntervals = rangeRatio >= 15 ? 6 : 4;
+  const yStepRaw = paddedMaxVal / yIntervals;
+  const yExp = Math.floor(Math.log10(Math.max(1, yStepRaw)));
+  const yMagnitude = Math.pow(10, yExp);
+  const yFraction = yStepRaw / yMagnitude;
+  const yNiceFraction =
+    yFraction <= 1
+      ? 1
+      : yFraction <= 1.2
+        ? 1.2
+        : yFraction <= 1.5
+          ? 1.5
+          : yFraction <= 2
+            ? 2
+            : yFraction <= 2.5
+              ? 2.5
+              : yFraction <= 3
+                ? 3
+                : yFraction <= 4
+                  ? 4
+                  : yFraction <= 5
+                    ? 5
+                    : 10;
+  const yStep = yNiceFraction * yMagnitude;
+  const yMax = yStep * yIntervals;
 
   const groupWidth = drawWidth / data.length;
   const barWidth = Math.min(groupWidth * 0.35, 14);
   const gap = 2;
 
-  const yLines = [0, 0.25, 0.5, 0.75, 1];
+  const yLines = Array.from({ length: yIntervals + 1 }, (_, i) => i / yIntervals);
+  const LONG_PRESS_DELAY_MS = 220;
+  const MOVE_CANCEL_THRESHOLD = 8;
+  const [touchState, setTouchState] = useState<{
+    isActive: boolean;
+    lineX: number;
+    hoveredBar: null | {
+      type: "income" | "expense";
+      value: number;
+      topY: number;
+    };
+  }>({ isActive: false, lineX: yAxisWidth, hoveredBar: null });
+
+  const barsMeta = useMemo(
+    () =>
+      data.map((group, i) => {
+        const groupX = yAxisWidth + i * groupWidth + groupWidth / 2;
+        const incomeX = groupX - barWidth - gap / 2;
+        const expenseX = groupX + gap / 2;
+
+        const incomeRatio = Math.min(1, Math.max(0, group.income / yMax));
+        const expenseRatio = Math.min(1, Math.max(0, group.expense / yMax));
+        const incomeH = Math.max(incomeRatio * (height - chartPaddingTop), group.income > 0 ? 2 : 0);
+        const expenseH = Math.max(expenseRatio * (height - chartPaddingTop), group.expense > 0 ? 2 : 0);
+        const incomeY = height - incomeH;
+        const expenseY = height - expenseH;
+
+        return {
+          group,
+          groupX,
+          income: { x: incomeX, y: incomeY, width: barWidth, height: incomeH },
+          expense: { x: expenseX, y: expenseY, width: barWidth, height: expenseH },
+        };
+      }),
+    [barWidth, chartPaddingTop, data, gap, groupWidth, height, yAxisWidth, yMax],
+  );
+
+  const updateTouchAtX = useCallback(
+    (locationX: number) => {
+      const minX = yAxisWidth;
+      const maxX = svgWidth - chartPaddingRight;
+      const clampedX = Math.min(maxX, Math.max(minX, locationX));
+
+      let hoveredBar: {
+        type: "income" | "expense";
+        value: number;
+        topY: number;
+      } | null = null;
+
+      for (const item of barsMeta) {
+        if (item.income.height > 0 && clampedX >= item.income.x && clampedX <= item.income.x + item.income.width) {
+          hoveredBar = { type: "income", value: item.group.income, topY: item.income.y };
+          break;
+        }
+
+        if (item.expense.height > 0 && clampedX >= item.expense.x && clampedX <= item.expense.x + item.expense.width) {
+          hoveredBar = { type: "expense", value: item.group.expense, topY: item.expense.y };
+          break;
+        }
+      }
+
+      setTouchState({
+        isActive: true,
+        lineX: clampedX,
+        hoveredBar,
+      });
+    },
+    [barsMeta, chartPaddingRight, svgWidth, yAxisWidth],
+  );
+
+  const tooltip = useMemo(() => {
+    if (!touchState.isActive || !touchState.hoveredBar) return null;
+
+    const title = touchState.hoveredBar.type === "income" ? "Ingreso" : "Gasto";
+    const amount = formatCurrency(touchState.hoveredBar.value, currencyCode);
+    const text = `${title}: ${amount}`;
+    const tooltipWidth = Math.max(104, text.length * 6.4 + 14);
+    const tooltipHeight = 22;
+    const x = Math.min(svgWidth - chartPaddingRight - tooltipWidth, Math.max(yAxisWidth, touchState.lineX - tooltipWidth / 2));
+    const y = chartPaddingTop + 2;
+    return { text, x, y, width: tooltipWidth, height: tooltipHeight };
+  }, [chartPaddingRight, chartPaddingTop, currencyCode, svgWidth, touchState, yAxisWidth]);
+
+  const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressStartRef = useRef<{ pageX: number; pageY: number } | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeConsumedRef = useRef(false);
+  const lastLocationXRef = useRef<number>(yAxisWidth);
+  const chartBoundsRef = useRef<{ left: number; width: number }>({ left: 0, width: svgWidth });
+  const chartContainerRef = useRef<View>(null);
+
+  const updateChartBounds = useCallback(() => {
+    chartContainerRef.current?.measureInWindow((x, _y, width) => {
+      chartBoundsRef.current = { left: x, width };
+    });
+  }, []);
+
+  const getRelativeX = useCallback((event: NativeSyntheticEvent<NativeTouchEvent>) => {
+    const relativeX = event.nativeEvent.pageX - chartBoundsRef.current.left;
+    if (Number.isFinite(relativeX)) return relativeX;
+    return event.nativeEvent.locationX;
+  }, []);
+
+  const clearLongPressTimer = useCallback(() => {
+    if (!longPressTimeoutRef.current) return;
+    clearTimeout(longPressTimeoutRef.current);
+    longPressTimeoutRef.current = null;
+  }, []);
+
+  const activateTouchAtX = useCallback(
+    (locationX: number) => {
+      onTouchActiveChange?.(true);
+      updateTouchAtX(locationX);
+    },
+    [onTouchActiveChange, updateTouchAtX],
+  );
+
+  const deactivateTouch = useCallback(() => {
+    clearLongPressTimer();
+    pressStartRef.current = null;
+    setTouchState({ isActive: false, lineX: yAxisWidth, hoveredBar: null });
+    onTouchActiveChange?.(false);
+  }, [clearLongPressTimer, onTouchActiveChange, yAxisWidth]);
+
+  const handleTouchStart = useCallback(
+    (event: NativeSyntheticEvent<NativeTouchEvent>) => {
+      if (touchState.isActive) return;
+
+      updateChartBounds();
+      clearLongPressTimer();
+      const { pageX, pageY } = event.nativeEvent;
+      pressStartRef.current = { pageX, pageY };
+      swipeStartRef.current = { x: pageX, y: pageY };
+      swipeConsumedRef.current = false;
+      lastLocationXRef.current = getRelativeX(event);
+
+      longPressTimeoutRef.current = setTimeout(() => {
+        activateTouchAtX(lastLocationXRef.current);
+      }, LONG_PRESS_DELAY_MS);
+    },
+    [activateTouchAtX, clearLongPressTimer, getRelativeX, touchState.isActive, updateChartBounds],
+  );
+
+  const handleTouchMove = useCallback(
+    (event: NativeSyntheticEvent<NativeTouchEvent>) => {
+      const { pageX, pageY } = event.nativeEvent;
+      const swipeStart = swipeStartRef.current;
+      if (allowHorizontalSwipe && swipeStart && !touchState.isActive && !swipeConsumedRef.current) {
+        const dx = pageX - swipeStart.x;
+        const dy = pageY - swipeStart.y;
+        if (Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          swipeConsumedRef.current = true;
+          clearLongPressTimer();
+          pressStartRef.current = null;
+          onHorizontalSwipe?.(dx < 0 ? "left" : "right");
+          return;
+        }
+      }
+      const relativeX = getRelativeX(event);
+      lastLocationXRef.current = relativeX;
+
+      if (touchState.isActive) {
+        updateTouchAtX(relativeX);
+        return;
+      }
+
+      const pressStart = pressStartRef.current;
+      if (!pressStart || !longPressTimeoutRef.current) return;
+
+      const movedX = Math.abs(pageX - pressStart.pageX);
+      const movedY = Math.abs(pageY - pressStart.pageY);
+      if (movedX > MOVE_CANCEL_THRESHOLD || movedY > MOVE_CANCEL_THRESHOLD) {
+        clearLongPressTimer();
+        pressStartRef.current = null;
+      }
+    },
+    [allowHorizontalSwipe, clearLongPressTimer, getRelativeX, onHorizontalSwipe, touchState.isActive, updateTouchAtX],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    swipeStartRef.current = null;
+    swipeConsumedRef.current = false;
+    if (!touchState.isActive) {
+      clearLongPressTimer();
+      pressStartRef.current = null;
+      return;
+    }
+    deactivateTouch();
+  }, [clearLongPressTimer, deactivateTouch, touchState.isActive]);
+
+  useEffect(
+    () => () => {
+      clearLongPressTimer();
+      onTouchActiveChange?.(false);
+    },
+    [clearLongPressTimer, onTouchActiveChange],
+  );
+
+  useEffect(() => {
+    updateChartBounds();
+  }, [updateChartBounds]);
 
   return (
-    <View className="w-full">
-      <Svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ alignSelf: "center" }}>
+    <View ref={chartContainerRef} className="w-full" onLayout={updateChartBounds}>
+      <Svg
+        width={svgWidth}
+        height={svgHeight}
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        style={{ alignSelf: "center" }}
+        onStartShouldSetResponder={() => false}
+        onMoveShouldSetResponder={() => touchState.isActive}
+        onResponderTerminationRequest={() => false}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onResponderRelease={deactivateTouch}
+        onResponderTerminate={() => {}}
+      >
         {/* Y-axis labels */}
         {yLines.map((ratio) => {
           const y = chartPaddingTop + (1 - ratio) * (height - chartPaddingTop);
-          const val = niceMax * ratio;
+          const val = yMax * ratio;
           return (
-            <SvgText key={`lbl-${ratio}`} x={yAxisWidth - 4} y={y + 3.5} textAnchor="end" fontSize={9} fill="#94A3B8">
+            <SvgText key={`lbl-${ratio}`} x={yAxisWidth - 4} y={y + 3.5} textAnchor="end" fontSize={9} fill={isDark ? "#94A3B8" : "#64748B"}>
               {formatYVal(val)}
             </SvgText>
           );
@@ -82,39 +341,50 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
               x2={svgWidth - chartPaddingRight}
               y1={y}
               y2={y}
-              stroke="#E2E8F0"
+              stroke={isDark ? "#334155" : "#E2E8F0"}
               strokeWidth={1}
-              strokeDasharray={ratio === 0 ? "" : "4,4"}
+              strokeDasharray={ratio === 0 ? "" : "3,3"}
             />
           );
         })}
 
         {/* Bars */}
-        {data.map((group, i) => {
-          const groupX = yAxisWidth + i * groupWidth + groupWidth / 2;
-          const incomeX = groupX - barWidth - gap / 2;
-          const expenseX = groupX + gap / 2;
-
-          const incomeH = Math.max((group.income / niceMax) * (height - chartPaddingTop), group.income > 0 ? 2 : 0);
-          const expenseH = Math.max((group.expense / niceMax) * (height - chartPaddingTop), group.expense > 0 ? 2 : 0);
-          const incomeY = height - incomeH;
-          const expenseY = height - expenseH;
-          const labelY = height + bottomLabelHeight - 4;
+        {barsMeta.map((item, i) => {
+          const labelY = height + bottomLabelHeight - 5;
+          const labelX = item.groupX;
 
           return (
             <G key={i}>
-              <Rect x={incomeX} y={incomeY} width={barWidth} height={incomeH} rx={3} ry={3} fill={incomeColor} opacity={0.9} />
-              <Rect x={expenseX} y={expenseY} width={barWidth} height={expenseH} rx={3} ry={3} fill={expenseColor} opacity={0.9} />
-              <SvgText x={groupX} y={labelY} textAnchor="middle" fontSize={10} fill="#94A3B8" fontWeight="500">
-                {group.label}
+              <Rect x={item.income.x} y={item.income.y} width={item.income.width} height={item.income.height} rx={3} ry={3} fill={incomeColor} opacity={0.9} />
+              <Rect x={item.expense.x} y={item.expense.y} width={item.expense.width} height={item.expense.height} rx={3} ry={3} fill={expenseColor} opacity={0.9} />
+              <SvgText
+                x={labelX}
+                y={labelY}
+                textAnchor="middle"
+                fontSize={10}
+                fill="#94A3B8"
+                fontWeight="500"
+                transform={verticalXLabels ? `rotate(-90 ${labelX} ${labelY})` : undefined}
+              >
+                {item.group.label}
               </SvgText>
             </G>
           );
         })}
+
+        {touchState.isActive && <Line x1={touchState.lineX} x2={touchState.lineX} y1={chartPaddingTop} y2={height} stroke="#64748B" strokeWidth={1.25} strokeDasharray="3,3" />}
+        {tooltip && (
+          <G>
+            <Rect x={tooltip.x} y={tooltip.y} width={tooltip.width} height={tooltip.height} rx={6} ry={6} fill="#0F172A" opacity={0.95} />
+            <SvgText x={tooltip.x + tooltip.width / 2} y={tooltip.y + 14.5} textAnchor="middle" fontSize={10} fill="#FFFFFF" fontWeight="600">
+              {tooltip.text}
+            </SvgText>
+          </G>
+        )}
       </Svg>
 
       {/* Legend */}
-      <View className="flex-row justify-center gap-x-5 mt-1">
+      <View className="flex-row justify-center gap-x-5 mt-4">
         <View className="flex-row items-center gap-x-1.5">
           <View className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: incomeColor }} />
           <Text className="text-xs text-slate-500 dark:text-slate-400">Ingresos</Text>

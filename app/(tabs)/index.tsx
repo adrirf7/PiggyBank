@@ -116,7 +116,7 @@ export default function DashboardScreen() {
     };
   }, [goals]);
 
-  const recentTxs = useMemo(() => [...transactions].sort(compareTransactionsNewestFirst).slice(0, 5), [transactions]);
+  const recentTxs = useMemo(() => [...transactions].sort(compareTransactionsNewestFirst).slice(0, 7), [transactions]);
   const goalById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
   const categoriesById = useMemo(() => new Map(allCategories.map((category) => [category.id, category])), [allCategories]);
   const selectedTransactions = useMemo(() => {
@@ -228,6 +228,17 @@ export default function DashboardScreen() {
         },
       },
     ]);
+  };
+
+  const openTransactionInMovements = (transactionId: string) => {
+    router.push({
+      pathname: "/(tabs)/transactions",
+      params: {
+        filter: "all",
+        focusTransactionId: transactionId,
+        focusNonce: Date.now().toString(),
+      },
+    });
   };
 
   const deleteButtonColor = selectedIds.length > 0 ? "#EF4444" : isDark ? "#334155" : "#CBD5E1";
@@ -437,7 +448,7 @@ export default function DashboardScreen() {
                   <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Cancelar</Text>
                 </Pressable>
               )}
-              {transactions.length > 5 && (
+              {transactions.length > 7 && (
                 <Pressable onPress={() => router.push("/(tabs)/transactions")}>
                   <Text className="text-sm font-medium" style={{ color: PRIMARY }}>
                     Ver todo
@@ -477,7 +488,7 @@ export default function DashboardScreen() {
                   categoriesById={categoriesById}
                   selectable={selectionMode}
                   selected={selectedIds.includes(tx.id)}
-                  onPress={selectionMode ? toggleSelected : undefined}
+                  onPress={selectionMode ? toggleSelected : openTransactionInMovements}
                   onLongPress={enterSelectionMode}
                 />
               ))}

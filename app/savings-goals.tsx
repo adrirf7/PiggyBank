@@ -24,6 +24,7 @@ export default function SavingsGoalsScreen() {
   const { userProfile } = useAuth();
   const { goals, deleteGoal } = useSavingsGoalStore();
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const currencyCode = userProfile?.currencyCode;
 
   const handleDelete = (goal: SavingsGoal) => {
     alert("Eliminar objetivo", `¿Eliminar "${goal.name}"?`, [
@@ -64,6 +65,7 @@ export default function SavingsGoalsScreen() {
                 goal={goal}
                 cardBg={cardBg}
                 isDark={isDark}
+                currencyCode={currencyCode}
                 onDelete={() => handleDelete(goal)}
                 onPress={() => router.push({ pathname: "/manage-goal", params: { goalId: goal.id } })}
               />
@@ -75,7 +77,21 @@ export default function SavingsGoalsScreen() {
   );
 }
 
-function GoalCard({ goal, cardBg, isDark, onDelete, onPress }: { goal: SavingsGoal; cardBg: string; isDark: boolean; onDelete: () => void; onPress: () => void }) {
+function GoalCard({
+  goal,
+  cardBg,
+  isDark,
+  currencyCode,
+  onDelete,
+  onPress,
+}: {
+  goal: SavingsGoal;
+  cardBg: string;
+  isDark: boolean;
+  currencyCode?: string;
+  onDelete: () => void;
+  onPress: () => void;
+}) {
   const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
   const isComplete = percent >= 100;
 
@@ -114,7 +130,7 @@ function GoalCard({ goal, cardBg, isDark, onDelete, onPress }: { goal: SavingsGo
         {/* Amounts row */}
         <View className="flex-row justify-between items-center">
           <Text className="text-xs text-slate-500 dark:text-slate-400">
-            {formatCurrency(goal.currentAmount, userProfile?.currencyCode)} <Text className="text-slate-300 dark:text-slate-600">/ {formatCurrency(goal.targetAmount, userProfile?.currencyCode)}</Text>
+            {formatCurrency(goal.currentAmount, currencyCode)} <Text className="text-slate-300 dark:text-slate-600">/ {formatCurrency(goal.targetAmount, currencyCode)}</Text>
           </Text>
           <Text className="text-xs font-bold" style={{ color: isComplete ? "#22C55E" : goal.color }}>
             {percent.toFixed(0)}%
