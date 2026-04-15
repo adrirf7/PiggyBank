@@ -8,12 +8,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function LoginScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { signIn } = useAuth();
 
@@ -58,7 +55,7 @@ export default function LoginScreen() {
           </LinearGradient>
 
           {/* ── Form card ── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.card, { backgroundColor: "#1E293B" }]}>
             <Text style={[styles.title, { color: colors.text }]}>Iniciar sesión</Text>
             <Text style={[styles.subtitle, { color: colors.muted }]}>Bienvenido de nuevo 👋</Text>
 
@@ -132,7 +129,7 @@ export default function LoginScreen() {
             </Pressable>
 
             {/* Google sign-in */}
-            <GoogleSignInSection setError={setError} isDark={isDark} colors={colors} />
+            <GoogleSignInSection setError={setError} colors={colors} />
 
             {/* Register link */}
             <View style={styles.footer}>
@@ -148,7 +145,7 @@ export default function LoginScreen() {
   );
 }
 
-function GoogleSignInSection({ setError, isDark, colors }: { setError: (msg: string) => void; isDark: boolean; colors: typeof Colors.light }) {
+function GoogleSignInSection({ setError, colors }: { setError: (msg: string) => void; colors: typeof Colors.dark }) {
   const { signInWithGoogle } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -169,12 +166,12 @@ function GoogleSignInSection({ setError, isDark, colors }: { setError: (msg: str
   return (
     <>
       <View style={styles.dividerRow}>
-        <View style={[styles.dividerLine, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]} />
+        <View style={[styles.dividerLine, { backgroundColor: "#334155" }]} />
         <Text style={[styles.dividerText, { color: colors.muted }]}>o continúa con</Text>
-        <View style={[styles.dividerLine, { backgroundColor: isDark ? "#334155" : "#E2E8F0" }]} />
+        <View style={[styles.dividerLine, { backgroundColor: "#334155" }]} />
       </View>
       <Pressable
-        style={[styles.googleBtn, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? "#334155" : "#E2E8F0", opacity: isDisabled ? 0.6 : 1 }]}
+        style={[styles.googleBtn, { backgroundColor: "#0F172A", borderColor: "#334155", opacity: isDisabled ? 0.6 : 1 }]}
         onPress={handleGooglePress}
         disabled={isDisabled}
       >

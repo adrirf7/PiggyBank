@@ -10,9 +10,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, G, Line, Path, Text as SvgText } from "react-native-svg";
 
 import BarChart from "@/components/bar-chart";
+import { BreakdownChart } from "@/components/breakdown-chart";
 import DonutChart, { DonutSegment } from "@/components/donut-chart";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/context/auth";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
@@ -55,9 +55,8 @@ const MIXED_MODES: { key: MixedMode; label: string }[] = [
 
 export default function AnalyticsScreen() {
   const { userProfile } = useAuth();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
+  const isDark = true;
   const router = useRouter();
   const { transactions } = useTransactionStore();
   const { allCategories } = useCategoriesStore();
@@ -66,13 +65,11 @@ export default function AnalyticsScreen() {
   const [periodSlideDirection, setPeriodSlideDirection] = useState<"left" | "right">("left");
   const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
   const [primaryChartMode, setPrimaryChartMode] = useState<PrimaryChartMode>("bars");
-  const [isPrimaryChartModeOpen, setIsPrimaryChartModeOpen] = useState(false);
   const [monthXAxisMode, setMonthXAxisMode] = useState<MonthXAxisMode>("weeks");
   const [mixedMonthXAxisMode, setMixedMonthXAxisMode] = useState<MonthXAxisMode>("weeks");
   const [chartSwipeDirection, setChartSwipeDirection] = useState<"left" | "right">("left");
   const [mixedChartSwipeDirection, setMixedChartSwipeDirection] = useState<"left" | "right">("left");
   const [mixedMode, setMixedMode] = useState<MixedMode>("expense-categories");
-  const [isMixedModeOpen, setIsMixedModeOpen] = useState(false);
   const [isChartTouchActive, setIsChartTouchActive] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -239,7 +236,7 @@ export default function AnalyticsScreen() {
     }));
   }, [mixedChartLabels, mixedMode, expenseBreakdown, incomeBreakdown, categoriesById, parsedFilteredMeta, period, mixedMonthXAxisMode]);
 
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
   const currency = userProfile?.currencyCode;
   const periodIndex = PERIODS.findIndex(({ key }) => key === period);
   const periodLabel = PERIODS.find(({ key }) => key === period)?.label ?? "Mes";
@@ -302,8 +299,6 @@ export default function AnalyticsScreen() {
   }, [monthXAxisMode, period]);
   const closeSelectors = useCallback(() => {
     setIsPeriodDropdownOpen(false);
-    setIsPrimaryChartModeOpen(false);
-    setIsMixedModeOpen(false);
   }, []);
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -311,8 +306,6 @@ export default function AnalyticsScreen() {
     },
     [closeSelectors],
   );
-  const primaryChartModeLabel = primaryChartMode === "bars" ? "Barras" : "Líneas";
-  const mixedModeLabel = MIXED_MODES.find((m) => m.key === mixedMode)?.label ?? MIXED_MODES[0].label;
   const toggleMonthXAxisModeBySwipe = useCallback(
     (direction: "left" | "right") => {
       if (period !== "month") return;
@@ -333,12 +326,6 @@ export default function AnalyticsScreen() {
   useEffect(() => {
     setIsPeriodDropdownOpen(false);
   }, [period]);
-  useEffect(() => {
-    setIsPrimaryChartModeOpen(false);
-  }, [primaryChartMode]);
-  useEffect(() => {
-    setIsMixedModeOpen(false);
-  }, [mixedMode]);
 
   const periodEnteringAnimation = periodSlideDirection === "left" ? SlideInRight.duration(220) : SlideInLeft.duration(220);
   const periodExitingAnimation = periodSlideDirection === "left" ? SlideOutLeft.duration(220) : SlideOutRight.duration(220);
@@ -360,12 +347,12 @@ export default function AnalyticsScreen() {
 
   useEffect(() => {
     const backSub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (!isPeriodDropdownOpen && !isPrimaryChartModeOpen && !isMixedModeOpen) return false;
+      if (!isPeriodDropdownOpen) return false;
       closeSelectors();
       return true;
     });
     return () => backSub.remove();
-  }, [closeSelectors, isMixedModeOpen, isPeriodDropdownOpen, isPrimaryChartModeOpen]);
+  }, [closeSelectors, isPeriodDropdownOpen]);
 
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -517,27 +504,26 @@ export default function AnalyticsScreen() {
                 </View>
               )}
             </View>
-            <View className="relative">
+            <View className="flex-row gap-2">
               <Pressable
-                className="flex-row items-center rounded-xl px-3 py-2"
-                style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
-                onPress={() => setIsPrimaryChartModeOpen((prev) => !prev)}
+                onPress={() => setPrimaryChartMode("bars")}
+                className="px-3 py-1.5 rounded-lg"
+                style={{ backgroundColor: primaryChartMode === "bars" ? PRIMARY : colors.border }}
               >
-                <Text className="text-xs font-semibold mr-1.5" style={{ color: colors.text }}>
-                  {primaryChartModeLabel}
+                <Text className="text-xs font-semibold" style={{ color: primaryChartMode === "bars" ? "#000" : colors.text }}>
+                  Barras
                 </Text>
-                <Ionicons name={isPrimaryChartModeOpen ? "chevron-up" : "chevron-down"} size={14} color={colors.muted} />
               </Pressable>
-              {isPrimaryChartModeOpen && (
-                <View style={[styles.primaryChartModeDropdown, { backgroundColor: cardBg, borderColor: colors.border }]}>
-                  <Pressable onPress={() => setPrimaryChartMode("bars")} style={[styles.periodDropdownItem, primaryChartMode === "bars" ? { backgroundColor: PRIMARY + "14" } : undefined]}>
-                    <Text style={{ color: primaryChartMode === "bars" ? PRIMARY : colors.text, fontWeight: primaryChartMode === "bars" ? "700" : "600" }}>Barras</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setPrimaryChartMode("lines")} style={[styles.periodDropdownItem, primaryChartMode === "lines" ? { backgroundColor: PRIMARY + "14" } : undefined]}>
-                    <Text style={{ color: primaryChartMode === "lines" ? PRIMARY : colors.text, fontWeight: primaryChartMode === "lines" ? "700" : "600" }}>Líneas</Text>
-                  </Pressable>
-                </View>
-              )}
+
+              <Pressable
+                onPress={() => setPrimaryChartMode("lines")}
+                className="px-3 py-1.5 rounded-lg"
+                style={{ backgroundColor: primaryChartMode === "lines" ? PRIMARY : colors.border }}
+              >
+                <Text className="text-xs font-semibold" style={{ color: primaryChartMode === "lines" ? "#000" : colors.text }}>
+                  Líneas
+                </Text>
+              </Pressable>
             </View>
           </View>
           {!hasPrimaryRecords ? (
@@ -614,30 +600,19 @@ export default function AnalyticsScreen() {
                 </View>
               )}
             </View>
-            <View className="relative">
-              <Pressable
-                className="flex-row items-center rounded-xl px-3 py-2"
-                style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
-                onPress={() => setIsMixedModeOpen((prev) => !prev)}
-              >
-                <Text className="text-xs font-semibold mr-1.5" style={{ color: colors.text }}>
-                  {mixedModeLabel}
-                </Text>
-                <Ionicons name={isMixedModeOpen ? "chevron-up" : "chevron-down"} size={14} color={colors.muted} />
-              </Pressable>
-              {isMixedModeOpen && (
-                <View style={[styles.mixedModeDropdown, { backgroundColor: cardBg, borderColor: colors.border }]}>
-                  {MIXED_MODES.map((mode) => (
-                    <Pressable
-                      key={mode.key}
-                      onPress={() => setMixedMode(mode.key)}
-                      style={[styles.periodDropdownItem, mixedMode === mode.key ? { backgroundColor: PRIMARY + "14" } : undefined]}
-                    >
-                      <Text style={{ color: mixedMode === mode.key ? PRIMARY : colors.text, fontWeight: mixedMode === mode.key ? "700" : "600" }}>{mode.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
+            <View className="flex-row gap-2">
+              {MIXED_MODES.map((mode) => (
+                <Pressable
+                  key={mode.key}
+                  onPress={() => setMixedMode(mode.key)}
+                  className="px-3 py-1.5 rounded-lg"
+                  style={{ backgroundColor: mixedMode === mode.key ? PRIMARY : colors.border }}
+                >
+                  <Text className="text-xs font-semibold" style={{ color: mixedMode === mode.key ? "#000" : colors.text }}>
+                    {mode.key === "expense-categories" ? "Gastos" : "Ingresos"}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
 
@@ -654,43 +629,18 @@ export default function AnalyticsScreen() {
           )}
         </View>
 
-        {/* ── Expense Donut ── */}
-        <View className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Gastos por categoría</Text>
-          {expenseBreakdown.length === 0 ? (
-            <EmptyChartState text="Sin gastos en este período" />
-          ) : (
-            <DonutChartWithLegend
-              segments={expenseSegments}
-              breakdown={expenseBreakdown}
-              centerLabel={formatCurrencyShort(expense, currency)}
-              centerSubLabel="Total gastos"
-              categoriesById={categoriesById}
-              currency={currency}
-              cardBg={cardBg}
-              isDark={isDark}
-            />
-          )}
-        </View>
-
-        {/* ── Income Donut ── */}
-        <View className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Ingresos por categoría</Text>
-          {incomeBreakdown.length === 0 ? (
-            <EmptyChartState text="Sin ingresos en este período" />
-          ) : (
-            <DonutChartWithLegend
-              segments={incomeSegments}
-              breakdown={incomeBreakdown}
-              centerLabel={formatCurrencyShort(income, currency)}
-              centerSubLabel="Total ingresos"
-              categoriesById={categoriesById}
-              currency={currency}
-              cardBg={cardBg}
-              isDark={isDark}
-            />
-          )}
-        </View>
+        {/* ── Unified Breakdown Charts ── */}
+        <BreakdownChart
+          incomeSegments={incomeSegments}
+          incomeBreakdown={incomeBreakdown}
+          expenseSegments={expenseSegments}
+          expenseBreakdown={expenseBreakdown}
+          totalIncome={income}
+          totalExpense={expense}
+          categoriesById={categoriesById}
+          currency={currency}
+          cardBg={cardBg}
+        />
 
       </ScrollView>
     </SafeAreaView>
@@ -763,136 +713,6 @@ function SummaryCard({
         {formatCurrency(amount, currency)}
       </Text>
     </Pressable>
-  );
-}
-
-function DonutChartWithLegend({
-  segments,
-  breakdown,
-  centerLabel,
-  centerSubLabel,
-  categoriesById,
-  currency,
-  cardBg,
-  isDark,
-}: {
-  segments: DonutSegment[];
-  breakdown: { category: string; amount: number; percentage: number }[];
-  centerLabel: string;
-  centerSubLabel: string;
-  categoriesById: Map<string, Category>;
-  currency?: string;
-  cardBg: string;
-  isDark: boolean;
-}) {
-  const moneyTextColor = isDark ? "#F8FAFC" : "#0F172A";
-  const subtitleColor = isDark ? "#94A3B8" : "#64748B";
-  const LONG_PRESS_DELAY_MS = 220;
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [morphCategory, setMorphCategory] = useState<string | null>(null);
-  const [highlightProgressValue, setHighlightProgressValue] = useState(0);
-  const highlightProgressRef = useRef(0);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastPaintedProgressRef = useRef(0);
-
-  const activeItem = useMemo(() => {
-    if (!activeCategory) return null;
-    return breakdown.find((item) => item.category === activeCategory) ?? null;
-  }, [activeCategory, breakdown]);
-
-  const activeIndex = useMemo(() => {
-    if (!morphCategory) return -1;
-    return breakdown.findIndex((item) => item.category === morphCategory);
-  }, [breakdown, morphCategory]);
-
-  const displayCenterLabel = activeItem ? formatCurrency(activeItem.amount, currency) : centerLabel;
-  const displayCenterSubLabel = activeItem ? `${activeItem.percentage.toFixed(1)}%` : centerSubLabel;
-
-  useEffect(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
-    const from = highlightProgressRef.current;
-    const to = activeCategory ? 1 : 0;
-    const duration = activeCategory ? 300 : 260;
-    const startTime = performance.now();
-
-    const step = () => {
-      const elapsed = performance.now() - startTime;
-      const t = Math.min(1, elapsed / duration);
-      const eased = 0.5 - Math.cos(t * Math.PI) / 2;
-      const value = from + (to - from) * eased;
-      highlightProgressRef.current = value;
-      if (Math.abs(value - lastPaintedProgressRef.current) > 0.008 || t >= 1) {
-        lastPaintedProgressRef.current = value;
-        setHighlightProgressValue(value);
-      }
-
-      if (t < 1) {
-        animationFrameRef.current = requestAnimationFrame(step);
-      } else {
-        animationFrameRef.current = null;
-        if (to === 0) {
-          setMorphCategory(null);
-        }
-      }
-    };
-
-    animationFrameRef.current = requestAnimationFrame(step);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, [activeCategory]);
-
-  return (
-    <View className="items-center">
-      <DonutChart
-        data={segments}
-        radius={80}
-        strokeWidth={24}
-        centerLabel={displayCenterLabel}
-        centerSubLabel={displayCenterSubLabel}
-        centerLabelColor={moneyTextColor}
-        centerSubLabelColor={subtitleColor}
-        centerBackgroundColor={cardBg}
-        morph={activeIndex >= 0 && highlightProgressValue > 0 ? { activeIndex, progress: highlightProgressValue } : null}
-      />
-      {/* Legend */}
-      <View className="w-full mt-5 gap-y-2">
-        {breakdown.slice(0, 6).map((item) => {
-          const cat = categoriesById.get(item.category);
-          const isActive = activeCategory === item.category;
-          return (
-            <Pressable
-              key={item.category}
-              delayLongPress={LONG_PRESS_DELAY_MS}
-              onLongPress={() => {
-                setMorphCategory(item.category);
-                setActiveCategory(item.category);
-              }}
-              onPressOut={() => setActiveCategory(null)}
-              className="flex-row items-center rounded-xl px-2.5 py-2"
-              style={{ backgroundColor: isActive ? (isDark ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.16)") : "rgba(148,163,184,0.08)" }}
-            >
-              <View className="w-2.5 h-2.5 rounded-full mr-2.5" style={{ backgroundColor: cat?.color ?? "#94A3B8" }} />
-              <Text className="flex-1 text-[12px] font-medium text-slate-700 dark:text-slate-200" numberOfLines={1}>
-                {cat?.name ?? item.category}
-              </Text>
-              <Text className="text-[11px] font-semibold mr-2 text-slate-600 dark:text-slate-300">
-                {item.percentage.toFixed(1)}%
-              </Text>
-              <Text className="text-[12px] font-semibold text-slate-700 dark:text-slate-200 w-24 text-right">{formatCurrency(item.amount, currency)}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 }
 
@@ -1142,8 +962,8 @@ function MixedAreaChart({
           const tickVal = yMax * r;
           return (
             <G key={`grid-${r}`}>
-              <Line x1={leftPad} x2={width - rightPad} y1={y} y2={y} stroke={isDark ? "#334155" : "#E2E8F0"} strokeDasharray={r === 0 ? "" : "3,3"} strokeWidth={1} />
-              <SvgText fill={isDark ? "#94A3B8" : "#64748B"} fontSize="9" x={leftPad - 6} y={y + 3.5} textAnchor="end">
+              <Line x1={leftPad} x2={width - rightPad} y1={y} y2={y} stroke="#334155" strokeDasharray={r === 0 ? "" : "3,3"} strokeWidth={1} />
+              <SvgText fill="#94A3B8" fontSize="9" x={leftPad - 6} y={y + 3.5} textAnchor="end">
                 {formatCurrencyShort(tickVal, currency)}
               </SvgText>
             </G>
@@ -1166,7 +986,7 @@ function MixedAreaChart({
           return (
             <SvgText
               key={`x-${label}-${i}`}
-              fill={isDark ? "#94A3B8" : "#64748B"}
+              fill="#94A3B8"
               fontSize="9"
               x={x}
               y={y}
@@ -1181,7 +1001,7 @@ function MixedAreaChart({
       </Svg>
 
       {touchState.active && touchRows.length > 0 && (
-        <View className="mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: isDark ? "rgba(15,23,42,0.9)" : "rgba(15,23,42,0.9)" }}>
+        <View className="mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(15,23,42,0.9)" }}>
           <Text className="text-[11px] font-semibold text-white mb-1">{labels[touchState.index]}</Text>
           {touchRows.map((row) => (
             <View key={`tip-${row.key}`} className="flex-row items-center justify-between">

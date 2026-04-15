@@ -1,6 +1,5 @@
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Category, RecurrenceType, TransactionType } from "@/types";
@@ -29,9 +28,7 @@ const DAYS_OF_WEEK = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 export default function AddTransactionScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { transactionId } = useLocalSearchParams<{ transactionId?: string }>();
   const { alert } = useAlert();
@@ -80,7 +77,7 @@ export default function AddTransactionScreen() {
 
   const activeColor = type === "income" ? INCOME_COLOR : EXPENSE_COLOR;
   const categories = type === "income" ? incomeCategories : expenseCategories;
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
   const currencySymbol = getCurrencySymbol(userProfile?.currencyCode ?? "EUR");
 
   useEffect(() => {
@@ -347,7 +344,7 @@ export default function AddTransactionScreen() {
                 <View key={option.key}>
                   <Pressable
                     className="px-4 py-3.5 flex-row items-center justify-between"
-                    style={idx > 0 ? { borderTopWidth: 1, borderTopColor: isDark ? "#334155" : "#F1F5F9" } : {}}
+                    style={idx > 0 ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}
                     onPress={() => handleRecurrenceChange(option.key)}
                   >
                     <View className="flex-row items-center gap-x-3 flex-1">

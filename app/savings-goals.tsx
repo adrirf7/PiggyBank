@@ -10,20 +10,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { SavingsGoal } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 
 export default function SavingsGoalsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { alert } = useAlert();
   const { userProfile } = useAuth();
   const { goals, deleteGoal, loading } = useSavingsGoalStore();
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
   const currencyCode = userProfile?.currencyCode;
 
   const handleDelete = useCallback((goal: SavingsGoal) => {
@@ -39,14 +36,13 @@ export default function SavingsGoalsScreen() {
         <GoalCard
           goal={goal}
           cardBg={cardBg}
-          isDark={isDark}
           currencyCode={currencyCode}
           onDelete={() => handleDelete(goal)}
           onPress={() => router.push({ pathname: "/manage-goal", params: { goalId: goal.id } })}
         />
       </Animated.View>
     ),
-    [cardBg, currencyCode, handleDelete, isDark, router],
+    [cardBg, currencyCode, handleDelete, router],
   );
 
   return (
@@ -100,18 +96,16 @@ export default function SavingsGoalsScreen() {
 function GoalCard({
   goal,
   cardBg,
-  isDark,
   currencyCode,
   onDelete,
   onPress,
 }: {
   goal: SavingsGoal;
   cardBg: string;
-  isDark: boolean;
   currencyCode?: string;
   onDelete: () => void;
   onPress: () => void;
-}) {
+}){
   const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
   const isComplete = percent >= 100;
 
@@ -143,7 +137,7 @@ function GoalCard({
         </View>
 
         {/* Progress bar */}
-        <View className="h-2 rounded-full overflow-hidden mb-2" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }}>
+        <View className="h-2 rounded-full overflow-hidden mb-2" style={{ backgroundColor: "#334155" }}>
           <View className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: isComplete ? "#22C55E" : goal.color }} />
         </View>
 

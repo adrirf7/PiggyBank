@@ -5,26 +5,24 @@ import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const router = useRouter();
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const insets = useSafeAreaInsets();
 
-    return (
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          lazy: true,
-          freezeOnBlur: true,
-          unmountOnBlur: false,
-          animation: "none",
-          sceneStyle: { backgroundColor: colors.background },
-          tabBarActiveTintColor: PRIMARY,
-          tabBarInactiveTintColor: colors.tabIconDefault,
-          tabBarStyle: {
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        lazy: true,
+        freezeOnBlur: true,
+        unmountOnBlur: false,
+        animation: "none",
+        sceneStyle: { backgroundColor: colors.background },
+        tabBarActiveTintColor: PRIMARY,
+        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarStyle: {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,

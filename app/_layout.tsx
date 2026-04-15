@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -8,9 +8,7 @@ import "../global.css";
 
 import { AlertDialogProvider } from "@/components/alert-dialog";
 import { AuthProvider, useAuth } from "@/context/auth";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { useInitializeTheme } from "@/store/use-theme";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -35,13 +33,11 @@ function AuthGate() {
 }
 
 function RootNavigator() {
-  const colorScheme = useColorScheme();
   const reducedMotion = useReducedMotion();
-  useInitializeTheme();
 
   return (
-    <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <View className="dark flex-1">
+      <ThemeProvider value={DarkTheme}>
         <AlertDialogProvider>
           <AuthGate />
           <Stack screenOptions={{ animation: reducedMotion ? "none" : "fade_from_bottom" }}>

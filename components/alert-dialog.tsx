@@ -1,5 +1,4 @@
 import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { setAlertStateRef } from "@/lib/alert-manager";
 import React, { useState } from "react";
 import { Modal, Pressable, SafeAreaView, Text, View } from "react-native";
@@ -50,8 +49,7 @@ interface AlertDialogComponentProps {
 }
 
 function AlertDialogComponent({ state, setState }: AlertDialogComponentProps) {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = Colors.dark;
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDismiss = () => {

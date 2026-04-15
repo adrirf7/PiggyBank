@@ -1,4 +1,3 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/context/auth";
 import { Category, SavingsGoal, Transaction } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
@@ -38,9 +37,7 @@ function getRecurrenceLabel(recurrence?: string): string {
 }
 
 function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectable = false, selected = false, animated = true, highlightPulse = false, goalById, categoriesById }: Props) {
-  const colorScheme = useColorScheme();
   const { userProfile } = useAuth();
-  const isDark = colorScheme === "dark";
   const isIncome = transaction.type === "income";
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
   const shakeRotation = useSharedValue(0);
@@ -92,12 +89,12 @@ function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectab
         className="flex-row items-center px-4 py-3.5 bg-white dark:bg-slate-800 rounded-2xl mb-2.5 active:opacity-70"
         style={{
           borderWidth: selectable ? 1.5 : 0,
-          borderColor: selected ? "#EF4444" : isDark ? "#334155" : "#E2E8F0",
+          borderColor: selected ? "#EF4444" : "#334155",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: isDark ? 0 : 0.06,
+          shadowOpacity: 0,
           shadowRadius: 4,
-          elevation: isDark ? 0 : 2,
+          elevation: 0,
         }}
         onPress={onPress ? () => onPress(transaction.id) : undefined}
         onLongPress={onLongPress ? () => onLongPress(transaction.id) : onDelete ? () => onDelete(transaction.id) : undefined}
@@ -130,7 +127,7 @@ function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectab
         </Text>
         {selectable && (
           <View className="ml-3">
-            <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={20} color={selected ? "#EF4444" : isDark ? "#64748B" : "#94A3B8"} />
+            <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={20} color={selected ? "#EF4444" : "#64748B"} />
           </View>
         )}
       </Pressable>

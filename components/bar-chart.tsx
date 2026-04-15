@@ -298,7 +298,7 @@ export default function BarChart({
           const y = chartPaddingTop + (1 - ratio) * (height - chartPaddingTop);
           const val = yMax * ratio;
           return (
-            <SvgText key={`lbl-${ratio}`} x={yAxisWidth - 4} y={y + 3.5} textAnchor="end" fontSize={9} fill={isDark ? "#94A3B8" : "#64748B"}>
+            <SvgText key={`lbl-${ratio}`} x={yAxisWidth - 4} y={y + 3.5} textAnchor="end" fontSize={9} fill="#94A3B8">
               {formatYVal(val)}
             </SvgText>
           );
@@ -314,7 +314,7 @@ export default function BarChart({
               x2={svgWidth - chartPaddingRight}
               y1={y}
               y2={y}
-              stroke={isDark ? "#334155" : "#E2E8F0"}
+              stroke="#334155"
               strokeWidth={1}
               strokeDasharray={ratio === 0 ? "" : "3,3"}
             />

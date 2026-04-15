@@ -9,7 +9,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from "@/constants/category-presets";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCategoriesStore } from "@/store/use-categories";
 import { Category, TransactionType } from "@/types";
 
@@ -30,9 +29,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export default function ManageCategoriesScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const { alert } = useAlert();
   const { allCategories, addCategory, updateCategory, deleteCategory } = useCategoriesStore();
 
@@ -55,7 +52,7 @@ export default function ManageCategoriesScreen() {
   const indicatorX = useSharedValue(0);
   const indicatorColorProgress = useSharedValue(activeType === "income" ? 1 : 0);
 
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
   const activeColor = activeType === "income" ? INCOME_COLOR : EXPENSE_COLOR;
   const isEditing = !!editor.id;
   const selectorPillWidth = typeSelectorWidth > 8 ? (typeSelectorWidth - 8) / FILTERS.length : 0;
@@ -333,7 +330,7 @@ export default function ManageCategoriesScreen() {
                       style={{
                         backgroundColor: color,
                         borderWidth: editor.color === color ? 3 : 1,
-                        borderColor: editor.color === color ? (isDark ? "#F8FAFC" : "#0F172A") : "transparent",
+                        borderColor: editor.color === color ? "#F8FAFC" : "transparent",
                       }}
                       onPress={() => setEditor((current) => ({ ...current, color }))}
                     />
@@ -403,7 +400,7 @@ export default function ManageCategoriesScreen() {
                       key={category.id}
                       className="px-4 py-3.5 flex-row items-center"
                       style={{
-                        backgroundColor: selected ? (isDark ? "#334155" : "#F1F5F9") : "transparent",
+                        backgroundColor: selected ? "#334155" : "transparent",
                         borderWidth: selectionMode ? 1 : 0,
                         borderColor: selected ? "#EF4444" : "transparent",
                       }}
@@ -421,7 +418,7 @@ export default function ManageCategoriesScreen() {
                         <Ionicons
                           name={selected ? "checkmark-circle" : "ellipse-outline"}
                           size={20}
-                          color={selected ? "#EF4444" : isDark ? "#64748B" : "#94A3B8"}
+                          color={selected ? "#EF4444" : "#64748B"}
                         />
                       )}
                       {!selectionMode && <Ionicons name="chevron-forward" size={16} color={colors.muted} />}
@@ -438,7 +435,7 @@ export default function ManageCategoriesScreen() {
           <Animated.View entering={FadeInDown.duration(220)}>
             <Pressable
               className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
-              style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : isDark ? "#334155" : "#CBD5E1" }]}
+              style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : "#334155" }]}
               disabled={selectedIds.length === 0}
               onPress={handleDeleteSelected}
             >

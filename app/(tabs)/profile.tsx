@@ -1,25 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ThemeSelector from "@/components/theme-selector";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTransactionStore } from "@/store/use-transactions";
 import { formatCurrency, getTotalByType } from "@/utils/calculations";
 import { DEFAULT_COUNTRY, getCountryCurrencyOptions } from "@/utils/currency";
 
 export default function ProfileScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { alert } = useAlert();
   const { user, userProfile, signOut, updateUserProfile } = useAuth();
@@ -35,7 +31,7 @@ export default function ProfileScreen() {
   const balance = totalIncome - totalExpense;
   const txCount = transactions.length;
 
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = colors.card;
 
   const initials = (user?.displayName ?? user?.email ?? "U")
     .split(" ")
@@ -145,7 +141,10 @@ export default function ProfileScreen() {
 
         <Animated.View entering={FadeInDown.duration(400).delay(185)} style={[styles.section, { backgroundColor: cardBg }]}>
           <Text style={[styles.sectionTitle, { color: colors.muted }]}>Categorías</Text>
-          <Pressable style={[styles.manageCategoriesBtn, { borderColor: colors.border, backgroundColor: colors.buttonSecondary }]} onPress={() => router.push("/manage-categories")}>
+          <Pressable
+            style={[styles.manageCategoriesBtn, { borderColor: colors.border, backgroundColor: colors.buttonSecondary }]}
+            onPress={() => router.push("/manage-categories")}
+          >
             <View style={styles.manageCategoriesLeft}>
               <View style={[styles.infoIcon, { backgroundColor: PRIMARY + "15" }]}>
                 <Ionicons name="pricetags-outline" size={17} color={PRIMARY} />
@@ -198,11 +197,6 @@ export default function ProfileScreen() {
               );
             })}
           </View>
-        </Animated.View>
-
-        {/* ── Theme Selector ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(210)}>
-          <ThemeSelector />
         </Animated.View>
 
         {/* ── Sign out ── */}

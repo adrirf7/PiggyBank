@@ -1,6 +1,5 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * App colors - Dark mode only
  */
 
 import { Platform } from "react-native";
@@ -10,24 +9,6 @@ export const INCOME_COLOR = "#22C55E";
 export const EXPENSE_COLOR = "#EF4444";
 
 export const Colors = {
-  light: {
-    text: "#0F172A",
-    background: "#F8FAFC",
-    card: "#FFFFFF",
-    border: "#E2E8F0",
-    muted: "#64748B",
-    tint: PRIMARY,
-    icon: "#64748B",
-    tabIconDefault: "#94A3B8",
-    tabIconSelected: PRIMARY,
-    tabBar: "#FFFFFF",
-    // Input backgrounds
-    inputBackground: "#F8FAFC",
-    inputBorder: "#E2E8F0",
-    // Button backgrounds
-    buttonSecondary: "#F1F5F9",
-    buttonSecondaryText: "#0F172A",
-  },
   dark: {
     text: "#F1F5F9",
     background: "#0F172A",
@@ -39,10 +20,8 @@ export const Colors = {
     tabIconDefault: "#64748B",
     tabIconSelected: PRIMARY,
     tabBar: "#1E293B",
-    // Input backgrounds
     inputBackground: "#0F172A",
     inputBorder: "#334155",
-    // Button backgrounds
     buttonSecondary: "#334155",
     buttonSecondaryText: "#F1F5F9",
   },
@@ -50,13 +29,9 @@ export const Colors = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: "ui-monospace",
   },
   default: {

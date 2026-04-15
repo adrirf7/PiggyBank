@@ -14,7 +14,6 @@ import TransactionItem from "@/components/transaction-item";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
@@ -28,9 +27,7 @@ const PERIODS: { key: Period; label: string }[] = [
 ];
 
 export default function DashboardScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { user, userProfile } = useAuth();
   const { alert } = useAlert();
@@ -236,7 +233,7 @@ export default function DashboardScreen() {
     });
   };
 
-  const deleteButtonColor = selectedIds.length > 0 ? "#EF4444" : isDark ? "#334155" : "#CBD5E1";
+  const deleteButtonColor = selectedIds.length > 0 ? "#EF4444" : "#334155";
 
   return (
     <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
@@ -321,7 +318,7 @@ export default function DashboardScreen() {
             <View className="flex-row gap-x-3">
               <Pressable
                 className="flex-1 rounded-2xl p-4 active:opacity-70"
-                style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}
+                style={[styles.card, { backgroundColor: "#1E293B" }]}
                 onPress={() => router.push("/transactions?filter=income")}
               >
                 <View className="flex-row items-center justify-between mb-3">
@@ -348,7 +345,7 @@ export default function DashboardScreen() {
 
               <Pressable
                 className="flex-1 rounded-2xl p-4 active:opacity-70"
-                style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}
+                style={[styles.card, { backgroundColor: "#1E293B" }]}
                 onPress={() => router.push("/transactions?filter=expense")}
               >
                 <View className="flex-row items-center justify-between mb-3">
@@ -377,7 +374,7 @@ export default function DashboardScreen() {
             {/* ── Period balance ── */}
             {(income > 0 || expense > 0) && (
               <Pressable onPress={() => router.push("/(tabs)/analytics")}>
-                <View className="mt-3 rounded-2xl px-4 py-3 flex-row justify-between items-center" style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+                <View className="mt-3 rounded-2xl px-4 py-3 flex-row justify-between items-center" style={[styles.card, { backgroundColor: "#1E293B" }]}>
                   <View className="flex-row items-center">
                     <View className="w-8 h-8 rounded-full items-center justify-center mr-2" style={{ backgroundColor: (periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR) + "20" }}>
                       <Ionicons name={periodBalance >= 0 ? "trending-up" : "trending-down"} size={16} color={periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR} />
@@ -407,7 +404,7 @@ export default function DashboardScreen() {
         <Animated.View entering={FadeInDown.duration(400).delay(300)} className="mx-5 mt-3">
           <Pressable
             className="rounded-2xl p-4 flex-row items-center"
-            style={[styles.card, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}
+            style={[styles.card, { backgroundColor: "#1E293B" }]}
             onPress={() => router.push("/savings-goals")}
           >
             <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: PRIMARY + "15" }}>
@@ -423,7 +420,7 @@ export default function DashboardScreen() {
                     {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de{" "}
                     {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
                   </Text>
-                  <View className="h-1.5 rounded-full overflow-hidden mt-2" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }}>
+                  <View className="h-1.5 rounded-full overflow-hidden mt-2" style={{ backgroundColor: "#334155" }}>
                     <View className="h-full rounded-full" style={{ width: `${goalPercent}%`, backgroundColor: PRIMARY }} />
                   </View>
                 </>

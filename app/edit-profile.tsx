@@ -10,13 +10,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const { user, userProfile, updateUserProfile } = useAuth();
   const { alert } = useAlert();
 
@@ -82,7 +79,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>

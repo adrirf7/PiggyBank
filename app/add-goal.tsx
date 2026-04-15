@@ -10,7 +10,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { getCurrencySymbol } from "@/utils/currency";
 
@@ -32,15 +31,13 @@ const GOAL_ICONS = [
 const GOAL_COLORS = ["#F97316", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6", "#EC4899", "#14B8A6", "#A855F7", "#0D9488", "#E11D48"];
 
 export default function AddGoalScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { userProfile } = useAuth();
   const { alert } = useAlert();
   const { goalId } = useLocalSearchParams<{ goalId?: string }>();
   const { goals, addGoal, updateGoal } = useSavingsGoalStore();
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
   const currencySymbol = getCurrencySymbol(userProfile?.currencyCode ?? "EUR");
 
   const existing = goalId ? goals.find((g) => g.id === goalId) : undefined;
@@ -204,7 +201,7 @@ export default function AddGoalScreen() {
                   key={icon}
                   className="w-12 h-12 rounded-xl items-center justify-center"
                   style={{
-                    backgroundColor: selectedIcon === icon ? selectedColor + "20" : isDark ? "#334155" : "#F1F5F9",
+                    backgroundColor: selectedIcon === icon ? selectedColor + "20" : "#334155",
                     borderWidth: selectedIcon === icon ? 2 : 0,
                     borderColor: selectedIcon === icon ? selectedColor : "transparent",
                   }}

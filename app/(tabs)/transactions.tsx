@@ -9,7 +9,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import TransactionItem from "@/components/transaction-item";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/context/auth";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
@@ -27,9 +26,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 
 export default function TransactionsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const { alert } = useAlert();
   const { userProfile } = useAuth();
   const { transactions, deleteTransactions, loading: transactionsLoading } = useTransactionStore();
@@ -172,26 +169,19 @@ export default function TransactionsScreen() {
     ]);
   };
 
-  const { totalIncome, totalExpense, recurringIncome, recurringExpense, recurringCount } = useMemo(() => {
+  const { totalIncome, totalExpense } = useMemo(() => {
     let totalIncome = 0;
     let totalExpense = 0;
-    let recurringIncome = 0;
-    let recurringExpense = 0;
-    let recurringCount = 0;
 
     for (const transaction of transactions) {
-      const isRecurring = Boolean(transaction.recurrence && transaction.recurrence !== "none");
       if (transaction.type === "income") {
         totalIncome += transaction.amount;
-        if (isRecurring) recurringIncome += transaction.amount;
       } else {
         totalExpense += transaction.amount;
-        if (isRecurring) recurringExpense += transaction.amount;
       }
-      if (isRecurring) recurringCount += 1;
     }
 
-    return { totalIncome, totalExpense, recurringIncome, recurringExpense, recurringCount };
+    return { totalIncome, totalExpense };
   }, [transactions]);
 
   const renderTransaction = useCallback(
@@ -275,7 +265,7 @@ export default function TransactionsScreen() {
         <View className="flex-row items-center justify-between mb-1">
           <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Movimientos</Text>
           {selectionMode && (
-            <Pressable onPress={exitSelectionMode} className="px-3 py-1.5 rounded-full" style={{ backgroundColor: isDark ? "#334155" : "#E2E8F0" }}>
+            <Pressable onPress={exitSelectionMode} className="px-3 py-1.5 rounded-full" style={{ backgroundColor: "#334155" }}>
               <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">Cancelar</Text>
             </Pressable>
           )}
@@ -283,7 +273,7 @@ export default function TransactionsScreen() {
         <Text className="text-sm text-slate-400 dark:text-slate-500">
           {selectionMode
             ? `${selectedIds.length} seleccionada${selectedIds.length === 1 ? "" : "s"} · Mantén pulsado para seleccionar`
-            : `${transactions.length} transacciones registradas · ${recurringCount} recurrentes · Mantén pulsado para seleccionar`}
+            : `${transactions.length} transacciones registradas · Mantén pulsado para seleccionar`}
         </Text>
       </Animated.View>
 
@@ -313,33 +303,8 @@ export default function TransactionsScreen() {
         </View>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.duration(400).delay(80)} className="flex-row mx-5 mb-4 gap-x-3">
-        <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: INCOME_COLOR + "10" }}>
-          <Ionicons name="repeat-outline" size={16} color={INCOME_COLOR} />
-          <View>
-            <Text className="text-xs" style={{ color: INCOME_COLOR + "CC" }}>
-              Ingresos recurrentes
-            </Text>
-            <Text className="text-sm font-bold" style={{ color: INCOME_COLOR }}>
-              {formatCurrency(recurringIncome, userProfile?.currencyCode)}
-            </Text>
-          </View>
-        </View>
-        <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: EXPENSE_COLOR + "10" }}>
-          <Ionicons name="repeat-outline" size={16} color={EXPENSE_COLOR} />
-          <View>
-            <Text className="text-xs" style={{ color: EXPENSE_COLOR + "CC" }}>
-              Gastos recurrentes
-            </Text>
-            <Text className="text-sm font-bold" style={{ color: EXPENSE_COLOR }}>
-              {formatCurrency(recurringExpense, userProfile?.currencyCode)}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-
       {/* ── Search ── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: isDark ? "#1E293B" : "#FFFFFF" }]}>
+      <Animated.View entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: "#1E293B" }]}>
         <Ionicons name="search-outline" size={18} color={colors.muted} />
         <TextInput
           className="flex-1 h-11 text-sm ml-2 text-slate-800 dark:text-slate-100"
@@ -439,7 +404,7 @@ export default function TransactionsScreen() {
         <Animated.View entering={FadeInDown.duration(400).delay(220)}>
           <Pressable
             className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
-            style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : isDark ? "#334155" : "#CBD5E1" }]}
+            style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : "#334155" }]}
             disabled={selectedIds.length === 0}
             onPress={handleDeleteSelected}
           >

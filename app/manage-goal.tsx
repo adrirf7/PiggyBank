@@ -10,7 +10,6 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { SavingsGoal, Transaction } from "@/types";
@@ -34,9 +33,7 @@ function getRecurrenceLabel(recurrence?: string): string {
 }
 
 export default function ManageGoalScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const colors = Colors[colorScheme ?? "light"];
+  const colors = Colors.dark;
   const router = useRouter();
   const { alert } = useAlert();
   const { userProfile } = useAuth();
@@ -70,7 +67,7 @@ export default function ManageGoalScreen() {
     );
   }
 
-  const cardBg = isDark ? "#1E293B" : "#FFFFFF";
+  const cardBg = "#1E293B";
   const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
   const isComplete = percent >= 100;
   const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
@@ -195,7 +192,7 @@ export default function ManageGoalScreen() {
             </View>
 
             {/* Progress bar */}
-            <View className="h-3 rounded-full overflow-hidden mb-3" style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9" }}>
+            <View className="h-3 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#334155" }}>
               <View className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: isComplete ? "#22C55E" : goal.color }} />
             </View>
 
@@ -238,7 +235,7 @@ export default function ManageGoalScreen() {
             </Pressable>
             <Pressable
               className="flex-1 py-3.5 rounded-2xl items-center flex-row justify-center gap-2"
-              style={{ backgroundColor: isDark ? "#334155" : "#F1F5F9", ...styles.actionBtn }}
+              style={{ backgroundColor: "#334155", ...styles.actionBtn }}
               onPress={handleRemoveMoney}
             >
               <Ionicons name="remove-circle-outline" size={20} color={colors.text} />
@@ -248,7 +245,7 @@ export default function ManageGoalScreen() {
           {goal.currentAmount > 0 && (
             <Pressable
               className="py-3 rounded-2xl items-center flex-row justify-center gap-2"
-              style={{ backgroundColor: isDark ? "#1E293B" : "#FFFFFF", borderWidth: 1, borderColor: "#EF4444", ...styles.card }}
+              style={{ backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#EF4444", ...styles.card }}
               onPress={handleRemoveAll}
             >
               <Ionicons name="cash-outline" size={18} color="#EF4444" />
@@ -269,7 +266,6 @@ export default function ManageGoalScreen() {
                   key={tx.id}
                   transaction={tx}
                   goal={goal}
-                  isDark={isDark}
                   cardBg={cardBg}
                   isFirst={idx === 0}
                   onEdit={handleEditRecurringContribution}
@@ -300,7 +296,6 @@ export default function ManageGoalScreen() {
                   key={tx.id}
                   transaction={tx}
                   goal={goal}
-                  isDark={isDark}
                   cardBg={cardBg}
                   isFirst={idx === 0}
                 />
@@ -316,7 +311,6 @@ export default function ManageGoalScreen() {
 function RecurringContributionItem({
   transaction,
   goal,
-  isDark,
   cardBg,
   isFirst,
   onEdit,
@@ -324,7 +318,6 @@ function RecurringContributionItem({
 }: {
   transaction: Transaction;
   goal: SavingsGoal;
-  isDark: boolean;
   cardBg: string;
   isFirst: boolean;
   onEdit: (transaction: Transaction) => void;
@@ -336,12 +329,12 @@ function RecurringContributionItem({
   return (
     <Animated.View
       entering={FadeInDown.duration(400)}
-      style={!isFirst ? { borderTopWidth: 1, borderTopColor: isDark ? "#334155" : "#F1F5F9" } : {}}
+      style={!isFirst ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}
     >
       <Pressable
         className="p-4 flex-row items-center justify-between active:opacity-70"
         style={{
-          backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+          backgroundColor: "rgba(255,255,255,0.02)",
         }}
         onPress={() => onEdit(transaction)}
       >
@@ -380,13 +373,11 @@ function RecurringContributionItem({
 function TransactionItem({
   transaction,
   goal,
-  isDark,
   cardBg,
   isFirst,
 }: {
   transaction: Transaction;
   goal: SavingsGoal;
-  isDark: boolean;
   cardBg: string;
   isFirst: boolean;
 }) {
@@ -395,7 +386,7 @@ function TransactionItem({
   return (
     <View
       className="p-3.5 flex-row items-center"
-      style={[!isFirst && { borderTopWidth: 1, borderTopColor: isDark ? "#334155" : "#F1F5F9" }, styles.txCard]}
+      style={[!isFirst && { borderTopWidth: 1, borderTopColor: "#334155" }, styles.txCard]}
     >
       <View className="w-9 h-9 rounded-full items-center justify-center mr-3" style={{ backgroundColor: goal.color + "20" }}>
         <Ionicons name={goal.icon as any} size={18} color={goal.color} />
