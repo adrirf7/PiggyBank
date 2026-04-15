@@ -1,4 +1,5 @@
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
+import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
@@ -13,7 +14,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown, Layout } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/context/auth";
 
 const RECURRENCE_OPTIONS: { key: RecurrenceType; label: string; icon: string }[] = [
   { key: "none", label: "Una vez", icon: "radio-button-off-outline" },

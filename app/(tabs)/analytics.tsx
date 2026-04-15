@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { addDays, addMonths, addWeeks, addYears, endOfMonth, endOfWeek, format, parseISO, startOfMonth, startOfWeek, subMonths, subWeeks, subYears } from "date-fns";
 import { es } from "date-fns/locale";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, NativeScrollEvent, NativeSyntheticEvent, NativeTouchEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
@@ -11,20 +11,13 @@ import Svg, { Circle, G, Line, Path, Text as SvgText } from "react-native-svg";
 
 import BarChart from "@/components/bar-chart";
 import { BreakdownChart } from "@/components/breakdown-chart";
-import DonutChart, { DonutSegment } from "@/components/donut-chart";
+import { DonutSegment } from "@/components/donut-chart";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Category, Period } from "@/types";
-import {
-    aggregatePeriodTotals,
-    calculatePercentageChange,
-    filterByPeriod,
-    formatCurrency,
-    getCategoryBreakdown,
-    getChartDataForPeriod,
-} from "@/utils/calculations";
+import { aggregatePeriodTotals, calculatePercentageChange, filterByPeriod, formatCurrency, getCategoryBreakdown, getChartDataForPeriod } from "@/utils/calculations";
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "week", label: "Semana" },
@@ -74,17 +67,19 @@ export default function AnalyticsScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const filtered = useMemo(() => filterByPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
-  const { currentIncome: income, currentExpense: expense, previousIncome, previousExpense } = useMemo(
-    () => aggregatePeriodTotals(transactions, period, referenceDate),
-    [transactions, period, referenceDate],
-  );
+  const {
+    currentIncome: income,
+    currentExpense: expense,
+    previousIncome,
+    previousExpense,
+  } = useMemo(() => aggregatePeriodTotals(transactions, period, referenceDate), [transactions, period, referenceDate]);
   const incomeChange = calculatePercentageChange(income, previousIncome);
   const expenseChange = calculatePercentageChange(expense, previousExpense);
-  
+
   // Diferencias en dinero
   const incomeDifference = income - previousIncome;
   const expenseDifference = expense - previousExpense;
-  
+
   const balance = income - expense;
 
   const expenseBreakdown = useMemo(() => getCategoryBreakdown(filtered, "expense"), [filtered]);
@@ -183,10 +178,7 @@ export default function AnalyticsScreen() {
     }
     return elapsed;
   }, [monthXAxisMode, period, primaryChartData.length, referenceDate]);
-  const hasPrimaryRecords = useMemo(
-    () => primarySeriesHasData.income.some(Boolean) || primarySeriesHasData.expense.some(Boolean),
-    [primarySeriesHasData],
-  );
+  const hasPrimaryRecords = useMemo(() => primarySeriesHasData.income.some(Boolean) || primarySeriesHasData.expense.some(Boolean), [primarySeriesHasData]);
   const expenseSegments: DonutSegment[] = expenseBreakdown.map((d) => ({
     value: d.amount,
     color: categoriesById.get(d.category)?.color ?? "#94A3B8",
@@ -393,7 +385,11 @@ export default function AnalyticsScreen() {
                   ]}
                 >
                   {PERIODS.map(({ key, label }) => (
-                    <Pressable key={key} onPress={() => handlePeriodChange(key)} style={[styles.periodDropdownItem, period === key ? { backgroundColor: PRIMARY + "14" } : undefined]}>
+                    <Pressable
+                      key={key}
+                      onPress={() => handlePeriodChange(key)}
+                      style={[styles.periodDropdownItem, period === key ? { backgroundColor: PRIMARY + "14" } : undefined]}
+                    >
                       <Text style={{ color: period === key ? PRIMARY : colors.text, fontWeight: period === key ? "700" : "600" }}>{label}</Text>
                     </Pressable>
                   ))}
@@ -403,7 +399,11 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        <Animated.View entering={FadeInDown.duration(400).delay(0)} className="mx-5 mb-5 flex-row items-center justify-between rounded-2xl px-3 py-2.5" style={[styles.card, { backgroundColor: cardBg }]}>
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(0)}
+          className="mx-5 mb-5 flex-row items-center justify-between rounded-2xl px-3 py-2.5"
+          style={[styles.card, { backgroundColor: cardBg }]}
+        >
           <Pressable onPress={() => movePeriod("previous")} className="w-9 h-9 items-center justify-center rounded-full" style={{ backgroundColor: colors.background }}>
             <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
@@ -419,8 +419,29 @@ export default function AnalyticsScreen() {
           <Animated.View key={periodContentKey} entering={periodEnteringAnimation} exiting={periodExitingAnimation}>
             {/* ── Summary cards ── */}
             <View className="flex-row gap-x-3 mb-4">
-              <SummaryCard label="Ingresos" amount={income} color={INCOME_COLOR} icon="arrow-down" cardBg={cardBg} percentageChange={incomeChange} difference={incomeDifference} onPress={() => router.push("/transactions?filter=income")} currency={currency} />
-              <SummaryCard label="Gastos" amount={expense} color={EXPENSE_COLOR} icon="arrow-up" cardBg={cardBg} percentageChange={expenseChange} difference={expenseDifference} isExpense={true} onPress={() => router.push("/transactions?filter=expense")} currency={currency} />
+              <SummaryCard
+                label="Ingresos"
+                amount={income}
+                color={INCOME_COLOR}
+                icon="arrow-down"
+                cardBg={cardBg}
+                percentageChange={incomeChange}
+                difference={incomeDifference}
+                onPress={() => router.push("/transactions?filter=income")}
+                currency={currency}
+              />
+              <SummaryCard
+                label="Gastos"
+                amount={expense}
+                color={EXPENSE_COLOR}
+                icon="arrow-up"
+                cardBg={cardBg}
+                percentageChange={expenseChange}
+                difference={expenseDifference}
+                isExpense={true}
+                onPress={() => router.push("/transactions?filter=expense")}
+                currency={currency}
+              />
             </View>
 
             {/* ── Balance banner ── */}
@@ -491,9 +512,7 @@ export default function AnalyticsScreen() {
                   >
                     <Ionicons name="chevron-back" size={12} color={colors.muted} />
                   </Pressable>
-                  <Text className="text-[11px] text-slate-400 dark:text-slate-500">
-                    Eje X: {monthXAxisMode === "weeks" ? "semanas" : "días"}
-                  </Text>
+                  <Text className="text-[11px] text-slate-400 dark:text-slate-500">Eje X: {monthXAxisMode === "weeks" ? "semanas" : "días"}</Text>
                   <Pressable
                     className="w-6 h-6 rounded-full items-center justify-center"
                     style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
@@ -535,12 +554,7 @@ export default function AnalyticsScreen() {
               exiting={chartSwipeDirection === "left" ? SlideOutLeft.duration(180) : SlideOutRight.duration(180)}
             >
               {primaryChartMode === "bars" ? (
-                <BarChart
-                  data={primaryChartData}
-                  isDark={isDark}
-                  currencyCode={currency}
-                  onTouchActiveChange={setIsChartTouchActive}
-                />
+                <BarChart data={primaryChartData} isDark={isDark} currencyCode={currency} onTouchActiveChange={setIsChartTouchActive} />
               ) : (
                 <MixedAreaChart
                   labels={primaryChartData.map((d) => d.label)}
@@ -587,9 +601,7 @@ export default function AnalyticsScreen() {
                   >
                     <Ionicons name="chevron-back" size={12} color={colors.muted} />
                   </Pressable>
-                  <Text className="text-[11px] text-slate-400 dark:text-slate-500">
-                    Eje X: {mixedMonthXAxisMode === "weeks" ? "semanas" : "días"}
-                  </Text>
+                  <Text className="text-[11px] text-slate-400 dark:text-slate-500">Eje X: {mixedMonthXAxisMode === "weeks" ? "semanas" : "días"}</Text>
                   <Pressable
                     className="w-6 h-6 rounded-full items-center justify-center"
                     style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
@@ -641,7 +653,6 @@ export default function AnalyticsScreen() {
           currency={currency}
           cardBg={cardBg}
         />
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -687,11 +698,7 @@ function SummaryCard({
   };
 
   return (
-    <Pressable 
-      className="flex-1 rounded-2xl p-4 active:opacity-70" 
-      style={[styles.card, { backgroundColor: cardBg }]}
-      onPress={onPress}
-    >
+    <Pressable className="flex-1 rounded-2xl p-4 active:opacity-70" style={[styles.card, { backgroundColor: cardBg }]} onPress={onPress}>
       <View className="flex-row items-center justify-between mb-3">
         <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: color + "20" }}>
           <Ionicons name={icon as any} size={18} color={color} />
@@ -762,10 +769,9 @@ function MixedAreaChart({
       } else if (last >= 0) {
         last = Math.max(first, last);
       }
-      const values =
-        drawAllAsZero
-          ? s.values.map(() => 0)
-          : s.values.map((value, i) => {
+      const values = drawAllAsZero
+        ? s.values.map(() => 0)
+        : s.values.map((value, i) => {
             if (i < first || i > last) return value;
             return hasData[i] ? value : 0;
           });
@@ -969,30 +975,17 @@ function MixedAreaChart({
             </G>
           );
         })}
-        {!isStraightLineChart &&
-          visibleSeries.map((s) => <Path key={`area-${s.key}`} d={areaPath(s)} fill={s.color} opacity={0.18} />)}
+        {!isStraightLineChart && visibleSeries.map((s) => <Path key={`area-${s.key}`} d={areaPath(s)} fill={s.color} opacity={0.18} />)}
         {visibleSeries.map((s) => (
           <Path key={`line-${s.key}`} d={linePath(s)} fill="none" stroke={s.color} strokeWidth={2.1} />
         ))}
         {isStraightLineChart &&
-          visibleSeries.map((s) =>
-            pointsForSeries(s).map((point, i) => (
-              <Circle key={`pt-${s.key}-${i}`} cx={point.x} cy={point.y} r={1.6} fill={s.color} opacity={0.95} />
-            )),
-          )}
+          visibleSeries.map((s) => pointsForSeries(s).map((point, i) => <Circle key={`pt-${s.key}-${i}`} cx={point.x} cy={point.y} r={1.6} fill={s.color} opacity={0.95} />))}
         {labels.map((label, i) => {
           const x = leftPad + i * xStep;
           const y = height - 12;
           return (
-            <SvgText
-              key={`x-${label}-${i}`}
-              fill="#94A3B8"
-              fontSize="9"
-              x={x}
-              y={y}
-              textAnchor="middle"
-              transform={verticalXLabels ? `rotate(-90 ${x} ${y})` : undefined}
-            >
+            <SvgText key={`x-${label}-${i}`} fill="#94A3B8" fontSize="9" x={x} y={y} textAnchor="middle" transform={verticalXLabels ? `rotate(-90 ${x} ${y})` : undefined}>
               {label}
             </SvgText>
           );

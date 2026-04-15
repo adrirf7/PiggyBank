@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
@@ -8,8 +8,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import TransactionItem from "@/components/transaction-item";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
-import { useAlert } from "@/hooks/use-alert";
 import { useAuth } from "@/context/auth";
+import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
@@ -47,10 +47,7 @@ export default function TransactionsScreen() {
   const handledFocusKeyRef = useRef<string | null>(null);
   const [filterSlideDirection, setFilterSlideDirection] = useState<"left" | "right">("left");
   const [highlightedTransactionId, setHighlightedTransactionId] = useState<string | null>(null);
-  const focusKey = useMemo(
-    () => (focusTransactionId ? `${focusTransactionId}:${focusNonce ?? "default"}` : null),
-    [focusTransactionId, focusNonce],
-  );
+  const focusKey = useMemo(() => (focusTransactionId ? `${focusTransactionId}:${focusNonce ?? "default"}` : null), [focusTransactionId, focusNonce]);
 
   const clearSelection = useCallback(() => {
     setSelectionMode(false);
@@ -210,15 +207,7 @@ export default function TransactionsScreen() {
         </View>
       );
     },
-    [
-      flatFilteredTransactions,
-      dateLabelByDate,
-      goalById,
-      categoriesById,
-      selectionMode,
-      selectedIdSet,
-      highlightedTransactionId,
-    ],
+    [flatFilteredTransactions, dateLabelByDate, goalById, categoriesById, selectionMode, selectedIdSet, highlightedTransactionId],
   );
 
   useEffect(() => {
@@ -304,7 +293,11 @@ export default function TransactionsScreen() {
       </Animated.View>
 
       {/* ── Search ── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(100)} className="mx-5 mb-3 flex-row items-center rounded-xl px-3" style={[styles.searchBox, { backgroundColor: "#1E293B" }]}>
+      <Animated.View
+        entering={FadeInDown.duration(400).delay(100)}
+        className="mx-5 mb-3 flex-row items-center rounded-xl px-3"
+        style={[styles.searchBox, { backgroundColor: "#1E293B" }]}
+      >
         <Ionicons name="search-outline" size={18} color={colors.muted} />
         <TextInput
           className="flex-1 h-11 text-sm ml-2 text-slate-800 dark:text-slate-100"
@@ -412,7 +405,6 @@ export default function TransactionsScreen() {
           </Pressable>
         </Animated.View>
       )}
-
     </SafeAreaView>
   );
 }

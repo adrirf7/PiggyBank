@@ -3,8 +3,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, Layout } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
@@ -12,8 +12,8 @@ import { useAlert } from "@/hooks/use-alert";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { RecurrenceType } from "@/types";
-import { getCurrencySymbol } from "@/utils/currency";
 import { formatCurrency } from "@/utils/calculations";
+import { getCurrencySymbol } from "@/utils/currency";
 
 const RECURRENCE_OPTIONS: { key: RecurrenceType; label: string; icon: string }[] = [
   { key: "none", label: "Una vez", icon: "radio-button-off-outline" },
@@ -32,7 +32,13 @@ export default function AddGoalContributionScreen() {
   const router = useRouter();
   const { userProfile } = useAuth();
   const { alert } = useAlert();
-  const { goalId, type: initialType, amount: initialAmount, transactionId, description: initialDescription } = useLocalSearchParams<{
+  const {
+    goalId,
+    type: initialType,
+    amount: initialAmount,
+    transactionId,
+    description: initialDescription,
+  } = useLocalSearchParams<{
     goalId: string;
     type?: "add" | "remove";
     amount?: string;
@@ -43,41 +49,20 @@ export default function AddGoalContributionScreen() {
   const { addGoalContribution, updateGoalContribution, transactions } = useTransactionStore();
 
   const goal = useMemo(() => goals.find((g) => g.id === goalId), [goals, goalId]);
-  const editingTransaction = useMemo(
-    () => (transactionId ? transactions.find((t) => t.id === transactionId) : null),
-    [transactionId, transactions],
-  );
+  const editingTransaction = useMemo(() => (transactionId ? transactions.find((t) => t.id === transactionId) : null), [transactionId, transactions]);
 
   const isEditing = !!transactionId && editingTransaction;
 
-  const [type, setType] = useState<"add" | "remove">(
-    isEditing
-      ? editingTransaction!.type === "income"
-        ? "add"
-        : "remove"
-      : initialType || "add",
-  );
-  const [amount, setAmount] = useState(
-    isEditing ? editingTransaction!.amount.toString() : initialAmount || "",
-  );
-  const [description, setDescription] = useState(
-    isEditing ? editingTransaction!.description || "" : initialDescription || "",
-  );
-  const [recurrence, setRecurrence] = useState<RecurrenceType>(
-    isEditing ? (editingTransaction!.recurrence || "none") : "none",
-  );
+  const [type, setType] = useState<"add" | "remove">(isEditing ? (editingTransaction!.type === "income" ? "add" : "remove") : initialType || "add");
+  const [amount, setAmount] = useState(isEditing ? editingTransaction!.amount.toString() : initialAmount || "");
+  const [description, setDescription] = useState(isEditing ? editingTransaction!.description || "" : initialDescription || "");
+  const [recurrence, setRecurrence] = useState<RecurrenceType>(isEditing ? editingTransaction!.recurrence || "none" : "none");
   const [recurrenceDate, setRecurrenceDate] = useState<Date | null>(
-    isEditing && editingTransaction && ["monthly", "quarterly", "yearly"].includes(editingTransaction.recurrence || "")
-      ? new Date(editingTransaction.date)
-      : null,
+    isEditing && editingTransaction && ["monthly", "quarterly", "yearly"].includes(editingTransaction.recurrence || "") ? new Date(editingTransaction.date) : null,
   );
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
-  const [selectedWeekDay, setSelectedWeekDay] = useState<number | null>(
-    isEditing ? editingTransaction?.recurrenceWeekDay ?? null : null,
-  );
-  const [selectedMonthDay, setSelectedMonthDay] = useState<number | null>(
-    isEditing ? editingTransaction?.recurrenceMonthDay ?? null : null,
-  );
+  const [selectedWeekDay, setSelectedWeekDay] = useState<number | null>(isEditing ? (editingTransaction?.recurrenceWeekDay ?? null) : null);
+  const [selectedMonthDay, setSelectedMonthDay] = useState<number | null>(isEditing ? (editingTransaction?.recurrenceMonthDay ?? null) : null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Sincronizar estado cuando se detecta una transacción para editar
@@ -85,25 +70,25 @@ export default function AddGoalContributionScreen() {
     if (isEditing && editingTransaction) {
       // Actualizar tipo
       setType(editingTransaction.type === "income" ? "add" : "remove");
-      
+
       // Actualizar monto
       setAmount(editingTransaction.amount.toString());
-      
+
       // Actualizar descripción
       setDescription(editingTransaction.description || "");
-      
+
       // Actualizar frecuencia
       setRecurrence(editingTransaction.recurrence || "none");
-      
+
       // Actualizar parámetros de frecuencia
       if (editingTransaction.recurrence === "weekly") {
         setSelectedWeekDay(editingTransaction.recurrenceWeekDay ?? null);
       }
-      
+
       if (editingTransaction.recurrence === "monthly" || editingTransaction.recurrence === "quarterly") {
         setSelectedMonthDay(editingTransaction.recurrenceMonthDay ?? null);
       }
-      
+
       if (["monthly", "quarterly", "yearly"].includes(editingTransaction.recurrence || "")) {
         setRecurrenceDate(new Date(editingTransaction.date));
       }
@@ -284,11 +269,7 @@ export default function AddGoalContributionScreen() {
             <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
           <Text className="text-base font-bold text-slate-800 dark:text-slate-100">
-            {isEditing
-              ? `Editar ${type === "add" ? "aportación" : "retiro"}`
-              : type === "add"
-                ? "Añadir dinero"
-                : "Retirar dinero"}
+            {isEditing ? `Editar ${type === "add" ? "aportación" : "retiro"}` : type === "add" ? "Añadir dinero" : "Retirar dinero"}
           </Text>
           <View className="w-10" />
         </View>
@@ -411,7 +392,12 @@ export default function AddGoalContributionScreen() {
 
               {/* Date Picker for Recurrence */}
               {showRecurrencePicker && recurrence === "weekly" && (
-                <Animated.View className="mt-4 rounded-2xl overflow-hidden p-4" style={{ backgroundColor: cardBg, ...styles.inputCard }} entering={FadeInDown.duration(400).springify()} layout={Layout.springify()}>
+                <Animated.View
+                  className="mt-4 rounded-2xl overflow-hidden p-4"
+                  style={{ backgroundColor: cardBg, ...styles.inputCard }}
+                  entering={FadeInDown.duration(400).springify()}
+                  layout={Layout.springify()}
+                >
                   <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">Selecciona un día</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {DAYS_OF_WEEK.map((day, idx) => (
@@ -443,7 +429,12 @@ export default function AddGoalContributionScreen() {
               )}
 
               {showRecurrencePicker && recurrence === "monthly" && (
-                <Animated.View className="mt-4 rounded-2xl overflow-hidden p-4" style={{ backgroundColor: cardBg, ...styles.inputCard }} entering={FadeInDown.duration(400).springify()} layout={Layout.springify()}>
+                <Animated.View
+                  className="mt-4 rounded-2xl overflow-hidden p-4"
+                  style={{ backgroundColor: cardBg, ...styles.inputCard }}
+                  entering={FadeInDown.duration(400).springify()}
+                  layout={Layout.springify()}
+                >
                   <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">Selecciona un día del mes</Text>
                   <View className="flex-row flex-wrap gap-2 justify-center">
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -476,7 +467,12 @@ export default function AddGoalContributionScreen() {
               )}
 
               {showRecurrencePicker && recurrence === "quarterly" && (
-                <Animated.View className="mt-4 rounded-2xl overflow-hidden p-4" style={{ backgroundColor: cardBg, ...styles.inputCard }} entering={FadeInDown.duration(400).springify()} layout={Layout.springify()}>
+                <Animated.View
+                  className="mt-4 rounded-2xl overflow-hidden p-4"
+                  style={{ backgroundColor: cardBg, ...styles.inputCard }}
+                  entering={FadeInDown.duration(400).springify()}
+                  layout={Layout.springify()}
+                >
                   <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">Selecciona un día del mes</Text>
                   <View className="flex-row flex-wrap gap-2 justify-center">
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -509,7 +505,12 @@ export default function AddGoalContributionScreen() {
               )}
 
               {showRecurrencePicker && recurrence === "yearly" && (
-                <Animated.View className="mt-4 rounded-2xl overflow-hidden p-4" style={{ backgroundColor: cardBg, ...styles.inputCard }} entering={FadeInDown.duration(400).springify()} layout={Layout.springify()}>
+                <Animated.View
+                  className="mt-4 rounded-2xl overflow-hidden p-4"
+                  style={{ backgroundColor: cardBg, ...styles.inputCard }}
+                  entering={FadeInDown.duration(400).springify()}
+                  layout={Layout.springify()}
+                >
                   <DateTimePicker
                     value={recurrenceDate || new Date()}
                     mode="date"

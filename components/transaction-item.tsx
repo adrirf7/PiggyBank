@@ -36,7 +36,18 @@ function getRecurrenceLabel(recurrence?: string): string {
   }
 }
 
-function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectable = false, selected = false, animated = true, highlightPulse = false, goalById, categoriesById }: Props) {
+function TransactionItem({
+  transaction,
+  onDelete,
+  onPress,
+  onLongPress,
+  selectable = false,
+  selected = false,
+  animated = true,
+  highlightPulse = false,
+  goalById,
+  categoriesById,
+}: Props) {
   const { userProfile } = useAuth();
   const isIncome = transaction.type === "income";
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
@@ -71,12 +82,7 @@ function TransactionItem({ transaction, onDelete, onPress, onLongPress, selectab
 
   useEffect(() => {
     if (!highlightPulse) return;
-    pulseScale.value = withSequence(
-      withTiming(1.08, { duration: 170 }),
-      withTiming(1, { duration: 170 }),
-      withTiming(1.08, { duration: 170 }),
-      withTiming(1, { duration: 170 }),
-    );
+    pulseScale.value = withSequence(withTiming(1.08, { duration: 170 }), withTiming(1, { duration: 170 }), withTiming(1.08, { duration: 170 }), withTiming(1, { duration: 170 }));
   }, [highlightPulse, pulseScale]);
 
   const shakeStyle = useAnimatedStyle(() => ({

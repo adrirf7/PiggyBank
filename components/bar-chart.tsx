@@ -29,15 +29,7 @@ function formatYVal(val: number): string {
   return `${Math.round(val)}`;
 }
 
-export default function BarChart({
-  data,
-  height = 180,
-  incomeColor = INCOME_COLOR,
-  expenseColor = EXPENSE_COLOR,
-  isDark = false,
-  currencyCode,
-  onTouchActiveChange,
-}: Props) {
+export default function BarChart({ data, height = 180, incomeColor = INCOME_COLOR, expenseColor = EXPENSE_COLOR, isDark = false, currencyCode, onTouchActiveChange }: Props) {
   const hasData = data.length > 0;
   const yAxisWidth = 32;
   const chartPaddingRight = 8;

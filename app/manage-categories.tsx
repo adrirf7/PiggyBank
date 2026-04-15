@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useMemo, useRef, useState } from "react";
 import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
 
 import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from "@/constants/category-presets";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
@@ -58,10 +58,7 @@ export default function ManageCategoriesScreen() {
   const selectorPillWidth = typeSelectorWidth > 8 ? (typeSelectorWidth - 8) / FILTERS.length : 0;
   const activeTypeIndex = FILTERS.findIndex((item) => item.key === activeType);
 
-  const filteredCategories = useMemo(
-    () => allCategories.filter((category) => category.type === activeType && !category.isDeleted),
-    [activeType, allCategories],
-  );
+  const filteredCategories = useMemo(() => allCategories.filter((category) => category.type === activeType && !category.isDeleted), [activeType, allCategories]);
 
   const selectedCategories = useMemo(() => {
     if (selectedIds.length === 0) return [];
@@ -253,7 +250,11 @@ export default function ManageCategoriesScreen() {
             <Text className="text-xs text-slate-500 dark:text-slate-400">Pulsa una categoría para editarla. Mantén pulsado para seleccionar y borrar varias.</Text>
           </View>
 
-          <View className="relative flex-row mx-5 mb-4 rounded-2xl p-1" style={{ backgroundColor: colors.buttonSecondary }} onLayout={(event) => setTypeSelectorWidth(event.nativeEvent.layout.width)}>
+          <View
+            className="relative flex-row mx-5 mb-4 rounded-2xl p-1"
+            style={{ backgroundColor: colors.buttonSecondary }}
+            onLayout={(event) => setTypeSelectorWidth(event.nativeEvent.layout.width)}
+          >
             {selectorPillWidth > 0 && (
               <Animated.View
                 pointerEvents="none"
@@ -276,11 +277,7 @@ export default function ManageCategoriesScreen() {
             ))}
           </View>
 
-          <Animated.View
-            key={activeType}
-            entering={contentEnteringAnimation}
-            exiting={contentExitingAnimation}
-          >
+          <Animated.View key={activeType} entering={contentEnteringAnimation} exiting={contentExitingAnimation}>
             <View className="mx-5 mb-3">
               <Pressable className="rounded-2xl py-3.5 px-4 flex-row items-center justify-center gap-x-2" style={{ backgroundColor: activeColor }} onPress={openCreateEditor}>
                 <Ionicons name="add-circle-outline" size={18} color="#fff" />
@@ -289,9 +286,17 @@ export default function ManageCategoriesScreen() {
             </View>
 
             {showEditor && (
-              <Animated.View entering={FadeInDown.duration(220)} className="mx-5 mb-5 rounded-2xl p-4" style={{ backgroundColor: cardBg, ...styles.card }} onLayout={(event) => setEditorCardY(event.nativeEvent.layout.y)}>
+              <Animated.View
+                entering={FadeInDown.duration(220)}
+                className="mx-5 mb-5 rounded-2xl p-4"
+                style={{ backgroundColor: cardBg, ...styles.card }}
+                onLayout={(event) => setEditorCardY(event.nativeEvent.layout.y)}
+              >
                 <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">{isEditing ? "Editar categoría" : "Nueva categoría"}</Text>
-                <View className="rounded-2xl px-4 py-3.5 flex-row items-center gap-x-3 mb-4" style={[styles.inputCard, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                <View
+                  className="rounded-2xl px-4 py-3.5 flex-row items-center gap-x-3 mb-4"
+                  style={[styles.inputCard, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}
+                >
                   <Ionicons name="text-outline" size={18} color={colors.muted} />
                   <TextInput
                     className="flex-1 text-sm"
@@ -375,9 +380,7 @@ export default function ManageCategoriesScreen() {
             )}
 
             <View className="mx-5 mb-2 flex-row items-center justify-between">
-              <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Categorías ({filteredCategories.length})
-              </Text>
+              <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Categorías ({filteredCategories.length})</Text>
               {selectionMode && (
                 <Pressable onPress={exitSelectionMode}>
                   <Text className="text-xs font-semibold" style={{ color: colors.muted }}>
@@ -414,15 +417,11 @@ export default function ManageCategoriesScreen() {
                         <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100">{category.name}</Text>
                         <Text className="text-xs text-slate-400 dark:text-slate-500">{category.isDefault ? "Sistema" : "Personalizada"}</Text>
                       </View>
-                      {selectionMode && (
-                        <Ionicons
-                          name={selected ? "checkmark-circle" : "ellipse-outline"}
-                          size={20}
-                          color={selected ? "#EF4444" : "#64748B"}
-                        />
-                      )}
+                      {selectionMode && <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={20} color={selected ? "#EF4444" : "#64748B"} />}
                       {!selectionMode && <Ionicons name="chevron-forward" size={16} color={colors.muted} />}
-                      {index < filteredCategories.length - 1 && <View style={{ position: "absolute", left: 12, right: 12, bottom: 0, height: 1, backgroundColor: colors.border }} />}
+                      {index < filteredCategories.length - 1 && (
+                        <View style={{ position: "absolute", left: 12, right: 12, bottom: 0, height: 1, backgroundColor: colors.border }} />
+                      )}
                     </Pressable>
                   );
                 })

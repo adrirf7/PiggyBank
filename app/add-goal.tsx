@@ -126,9 +126,9 @@ export default function AddGoalScreen() {
             <Text className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Importe objetivo</Text>
             <View className="rounded-2xl px-4 py-3.5 flex-row items-center gap-x-3" style={[styles.inputCard, { backgroundColor: cardBg }]}>
               <Ionicons name="flag-outline" size={18} color={colors.muted} />
-                <TextInput
-                  className="flex-1 text-sm text-slate-800 dark:text-slate-100"
-                  placeholder={`0.00 ${currencySymbol}`}
+              <TextInput
+                className="flex-1 text-sm text-slate-800 dark:text-slate-100"
+                placeholder={`0.00 ${currencySymbol}`}
                 placeholderTextColor={colors.muted}
                 value={targetAmount}
                 onChangeText={setTargetAmount}
@@ -145,9 +145,9 @@ export default function AddGoalScreen() {
             </Text>
             <View className="rounded-2xl px-4 py-3.5 flex-row items-center gap-x-3" style={[styles.inputCard, { backgroundColor: cardBg }]}>
               <Ionicons name="wallet-outline" size={18} color={colors.muted} />
-                <TextInput
-                  className="flex-1 text-sm text-slate-800 dark:text-slate-100"
-                  placeholder={`0.00 ${currencySymbol}`}
+              <TextInput
+                className="flex-1 text-sm text-slate-800 dark:text-slate-100"
+                placeholder={`0.00 ${currencySymbol}`}
                 placeholderTextColor={colors.muted}
                 value={currentAmount}
                 onChangeText={setCurrentAmount}

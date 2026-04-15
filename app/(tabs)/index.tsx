@@ -402,11 +402,7 @@ export default function DashboardScreen() {
 
         {/* ── Goals Quick Access ── */}
         <Animated.View entering={FadeInDown.duration(400).delay(300)} className="mx-5 mt-3">
-          <Pressable
-            className="rounded-2xl p-4 flex-row items-center"
-            style={[styles.card, { backgroundColor: "#1E293B" }]}
-            onPress={() => router.push("/savings-goals")}
-          >
+          <Pressable className="rounded-2xl p-4 flex-row items-center" style={[styles.card, { backgroundColor: "#1E293B" }]} onPress={() => router.push("/savings-goals")}>
             <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: PRIMARY + "15" }}>
               <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
             </View>

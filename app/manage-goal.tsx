@@ -4,8 +4,8 @@ import { es } from "date-fns/locale";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
@@ -42,22 +42,16 @@ export default function ManageGoalScreen() {
   const { transactions, deleteGoalContribution } = useTransactionStore();
 
   const goal = useMemo(() => goals.find((g) => g.id === goalId), [goals, goalId]);
-  
+
   // Separar transacciones recurrentes y no recurrentes
   const goalTransactions = useMemo(
     () => transactions.filter((t) => t.goalId === goalId && t.isGoalContribution).sort((a, b) => b.date.localeCompare(a.date)),
     [transactions, goalId],
   );
 
-  const recurringContributions = useMemo(
-    () => goalTransactions.filter((t) => t.recurrence && t.recurrence !== "none"),
-    [goalTransactions],
-  );
+  const recurringContributions = useMemo(() => goalTransactions.filter((t) => t.recurrence && t.recurrence !== "none"), [goalTransactions]);
 
-  const nonRecurringTransactions = useMemo(
-    () => goalTransactions.filter((t) => !t.recurrence || t.recurrence === "none"),
-    [goalTransactions],
-  );
+  const nonRecurringTransactions = useMemo(() => goalTransactions.filter((t) => !t.recurrence || t.recurrence === "none"), [goalTransactions]);
 
   if (!goal) {
     return (
@@ -292,13 +286,7 @@ export default function ManageGoalScreen() {
           ) : (
             <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: cardBg }}>
               {nonRecurringTransactions.map((tx, idx) => (
-                <TransactionItem
-                  key={tx.id}
-                  transaction={tx}
-                  goal={goal}
-                  cardBg={cardBg}
-                  isFirst={idx === 0}
-                />
+                <TransactionItem key={tx.id} transaction={tx} goal={goal} cardBg={cardBg} isFirst={idx === 0} />
               ))}
             </View>
           )}
@@ -327,10 +315,7 @@ function RecurringContributionItem({
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
 
   return (
-    <Animated.View
-      entering={FadeInDown.duration(400)}
-      style={!isFirst ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}
-    >
+    <Animated.View entering={FadeInDown.duration(400)} style={!isFirst ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}>
       <Pressable
         className="p-4 flex-row items-center justify-between active:opacity-70"
         style={{
@@ -357,11 +342,7 @@ function RecurringContributionItem({
           <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: goal.color + "20" }}>
             <Ionicons name="pencil" size={14} color={goal.color} />
           </View>
-          <Pressable
-            className="w-8 h-8 rounded-full items-center justify-center active:opacity-70"
-            style={{ backgroundColor: "#EF444420" }}
-            onPress={() => onDelete(transaction)}
-          >
+          <Pressable className="w-8 h-8 rounded-full items-center justify-center active:opacity-70" style={{ backgroundColor: "#EF444420" }} onPress={() => onDelete(transaction)}>
             <Ionicons name="close" size={16} color="#EF4444" />
           </Pressable>
         </View>
@@ -370,32 +351,17 @@ function RecurringContributionItem({
   );
 }
 
-function TransactionItem({
-  transaction,
-  goal,
-  cardBg,
-  isFirst,
-}: {
-  transaction: Transaction;
-  goal: SavingsGoal;
-  cardBg: string;
-  isFirst: boolean;
-}) {
+function TransactionItem({ transaction, goal, cardBg, isFirst }: { transaction: Transaction; goal: SavingsGoal; cardBg: string; isFirst: boolean }) {
   const isAdd = transaction.type === "income";
 
   return (
-    <View
-      className="p-3.5 flex-row items-center"
-      style={[!isFirst && { borderTopWidth: 1, borderTopColor: "#334155" }, styles.txCard]}
-    >
+    <View className="p-3.5 flex-row items-center" style={[!isFirst && { borderTopWidth: 1, borderTopColor: "#334155" }, styles.txCard]}>
       <View className="w-9 h-9 rounded-full items-center justify-center mr-3" style={{ backgroundColor: goal.color + "20" }}>
         <Ionicons name={goal.icon as any} size={18} color={goal.color} />
       </View>
       <View className="flex-1">
         <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100">{isAdd ? "Aportación" : "Retiro"}</Text>
-        <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-          {format(parseISO(transaction.date), "d MMM yyyy", { locale: es })}
-        </Text>
+        <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{format(parseISO(transaction.date), "d MMM yyyy", { locale: es })}</Text>
         {transaction.description && <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{transaction.description}</Text>}
       </View>
       <Text className="text-sm font-bold" style={{ color: isAdd ? "#22C55E" : "#EF4444" }}>

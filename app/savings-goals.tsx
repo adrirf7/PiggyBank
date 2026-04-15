@@ -23,12 +23,15 @@ export default function SavingsGoalsScreen() {
   const cardBg = "#1E293B";
   const currencyCode = userProfile?.currencyCode;
 
-  const handleDelete = useCallback((goal: SavingsGoal) => {
-    alert("Eliminar objetivo", `¿Eliminar "${goal.name}"?`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Eliminar", style: "destructive", onPress: () => deleteGoal(goal.id) },
-    ]);
-  }, [alert, deleteGoal]);
+  const handleDelete = useCallback(
+    (goal: SavingsGoal) => {
+      alert("Eliminar objetivo", `¿Eliminar "${goal.name}"?`, [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Eliminar", style: "destructive", onPress: () => deleteGoal(goal.id) },
+      ]);
+    },
+    [alert, deleteGoal],
+  );
 
   const renderGoal = useCallback(
     ({ item: goal, index }: { item: SavingsGoal; index: number }) => (
@@ -75,16 +78,16 @@ export default function SavingsGoalsScreen() {
           updateCellsBatchingPeriod={50}
           removeClippedSubviews
           ListEmptyComponent={
-          <View className="items-center py-20">
-            <View className="w-20 h-20 rounded-full items-center justify-center mb-5" style={{ backgroundColor: PRIMARY + "15" }}>
-              <Ionicons name="trophy-outline" size={40} color={PRIMARY} />
+            <View className="items-center py-20">
+              <View className="w-20 h-20 rounded-full items-center justify-center mb-5" style={{ backgroundColor: PRIMARY + "15" }}>
+                <Ionicons name="trophy-outline" size={40} color={PRIMARY} />
+              </View>
+              <Text className="text-base font-bold text-slate-700 dark:text-slate-200 mb-2">Sin objetivos todavía</Text>
+              <Text className="text-sm text-slate-400 dark:text-slate-500 text-center mb-6 leading-5">Crea tu primer objetivo de ahorro{"\n"}y empieza a seguir tu progreso.</Text>
+              <Pressable className="px-6 py-3 rounded-2xl" style={{ backgroundColor: PRIMARY }} onPress={() => router.push("/add-goal")}>
+                <Text className="text-white font-semibold text-sm">Crear objetivo</Text>
+              </Pressable>
             </View>
-            <Text className="text-base font-bold text-slate-700 dark:text-slate-200 mb-2">Sin objetivos todavía</Text>
-            <Text className="text-sm text-slate-400 dark:text-slate-500 text-center mb-6 leading-5">Crea tu primer objetivo de ahorro{"\n"}y empieza a seguir tu progreso.</Text>
-            <Pressable className="px-6 py-3 rounded-2xl" style={{ backgroundColor: PRIMARY }} onPress={() => router.push("/add-goal")}>
-              <Text className="text-white font-semibold text-sm">Crear objetivo</Text>
-            </Pressable>
-          </View>
           }
           renderItem={renderGoal}
         />
@@ -93,19 +96,7 @@ export default function SavingsGoalsScreen() {
   );
 }
 
-function GoalCard({
-  goal,
-  cardBg,
-  currencyCode,
-  onDelete,
-  onPress,
-}: {
-  goal: SavingsGoal;
-  cardBg: string;
-  currencyCode?: string;
-  onDelete: () => void;
-  onPress: () => void;
-}){
+function GoalCard({ goal, cardBg, currencyCode, onDelete, onPress }: { goal: SavingsGoal; cardBg: string; currencyCode?: string; onDelete: () => void; onPress: () => void }) {
   const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
   const isComplete = percent >= 100;
 

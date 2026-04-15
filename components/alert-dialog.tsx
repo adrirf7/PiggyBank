@@ -17,11 +17,7 @@ interface AlertState {
   onDismiss?: () => void;
 }
 
-export function AlertDialogProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AlertDialogProvider({ children }: { children: React.ReactNode }) {
   const [alertState, setAlertState] = useState<AlertState>({
     title: undefined,
     message: undefined,
@@ -76,13 +72,7 @@ function AlertDialogComponent({ state, setState }: AlertDialogComponentProps) {
   const otherButtons = state.buttons.filter((b) => b.style !== "cancel");
 
   return (
-    <Modal
-      visible={state.visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleDismiss}
-      statusBarTranslucent
-    >
+    <Modal visible={state.visible} transparent animationType="fade" onRequestClose={handleDismiss} statusBarTranslucent>
       <SafeAreaView
         className="flex-1 justify-center items-center px-4"
         style={{
@@ -104,18 +94,12 @@ function AlertDialogComponent({ state, setState }: AlertDialogComponentProps) {
           {(state.title || state.message) && (
             <View className="px-6 pt-6 pb-2">
               {state.title && (
-                <Text
-                  className="text-lg font-bold mb-2"
-                  style={{ color: theme.text }}
-                >
+                <Text className="text-lg font-bold mb-2" style={{ color: theme.text }}>
                   {state.title}
                 </Text>
               )}
               {state.message && (
-                <Text
-                  className="text-sm leading-5"
-                  style={{ color: theme.muted }}
-                >
+                <Text className="text-sm leading-5" style={{ color: theme.muted }}>
                   {state.message}
                 </Text>
               )}
@@ -131,19 +115,15 @@ function AlertDialogComponent({ state, setState }: AlertDialogComponentProps) {
                     key={index}
                     disabled={isLoading}
                     onPress={() => handleButtonPress(button)}
-                    className={`rounded-xl py-3 items-center justify-center ${
-                      isLoading ? "opacity-50" : "active:opacity-70"
-                    }`}
+                    className={`rounded-xl py-3 items-center justify-center ${isLoading ? "opacity-50" : "active:opacity-70"}`}
                     style={{
-                      backgroundColor:
-                        button.style === "destructive" ? "#EF4444" : "#c9e259",
+                      backgroundColor: button.style === "destructive" ? "#EF4444" : "#c9e259",
                     }}
                   >
                     <Text
                       className="text-sm font-semibold"
                       style={{
-                        color:
-                          button.style === "destructive" ? "#fff" : "#0F172A",
+                        color: button.style === "destructive" ? "#fff" : "#0F172A",
                       }}
                     >
                       {button.text}
@@ -157,17 +137,12 @@ function AlertDialogComponent({ state, setState }: AlertDialogComponentProps) {
               <Pressable
                 disabled={isLoading}
                 onPress={() => handleButtonPress(cancelButton)}
-                className={`rounded-xl py-3 items-center justify-center ${
-                  otherButtons.length > 0 ? "mt-2" : ""
-                } ${isLoading ? "opacity-50" : "active:opacity-70"}`}
+                className={`rounded-xl py-3 items-center justify-center ${otherButtons.length > 0 ? "mt-2" : ""} ${isLoading ? "opacity-50" : "active:opacity-70"}`}
                 style={{
                   backgroundColor: theme.buttonSecondary,
                 }}
               >
-                <Text
-                  className="text-sm font-semibold"
-                  style={{ color: theme.text }}
-                >
+                <Text className="text-sm font-semibold" style={{ color: theme.text }}>
                   {cancelButton.text}
                 </Text>
               </Pressable>
