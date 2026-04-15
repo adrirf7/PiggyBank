@@ -3,12 +3,14 @@ import { db } from "@/lib/firebase";
 import { Transaction } from "@/types";
 import { addDoc, collection, deleteDoc, doc, getDoc, increment, onSnapshot, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
+import { compareTransactionsNewestFirst } from "@/utils/calculations";
 
 export function useTransactionStore() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const hasProcessedRecurrence = useRef(false);
+  const transactionsByIdRef = useRef<Map<string, Transaction>>(new Map());
 
   const addTransaction = async (data: Omit<Transaction, "id">) => {
     if (!user) return;
@@ -201,6 +203,7 @@ export function useTransactionStore() {
       setTransactions([]);
       setLoading(false);
       hasProcessedRecurrence.current = false;
+      transactionsByIdRef.current = new Map();
       return;
     }
 
@@ -209,11 +212,40 @@ export function useTransactionStore() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const txs = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Transaction, "id">),
-        }));
-        setTransactions(txs);
+        let didChange = false;
+
+        for (const change of snapshot.docChanges()) {
+          const transaction = {
+            id: change.doc.id,
+            ...(change.doc.data() as Omit<Transaction, "id">),
+          };
+
+          if (change.type === "removed") {
+            if (transactionsByIdRef.current.delete(change.doc.id)) {
+              didChange = true;
+            }
+            continue;
+          }
+
+          transactionsByIdRef.current.set(change.doc.id, transaction);
+          didChange = true;
+        }
+
+        if (snapshot.docChanges().length === 0) {
+          const txs = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Transaction, "id">),
+          }));
+          transactionsByIdRef.current = new Map(txs.map((transaction) => [transaction.id, transaction]));
+          setTransactions(txs);
+          setLoading(false);
+          return;
+        }
+
+        if (didChange) {
+          const next = Array.from(transactionsByIdRef.current.values()).sort(compareTransactionsNewestFirst);
+          setTransactions(next);
+        }
         setLoading(false);
       },
       () => {

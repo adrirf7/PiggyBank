@@ -33,7 +33,7 @@ export default function TransactionsScreen() {
   const { alert } = useAlert();
   const { userProfile } = useAuth();
   const { transactions, deleteTransactions, loading: transactionsLoading } = useTransactionStore();
-  const { getCategoryById, allCategories } = useCategoriesStore();
+  const { allCategories } = useCategoriesStore();
   const { goals, loading: goalsLoading } = useSavingsGoalStore();
   const searchParams = useLocalSearchParams();
   const router = useRouter();
@@ -88,11 +88,14 @@ export default function TransactionsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (focusTransactionId) return;
       requestAnimationFrame(() => {
         listRef.current?.scrollToOffset({ offset: 0, animated: false });
       });
-    }, []),
+    }, [focusTransactionId]),
   );
+
+  const categoriesById = useMemo(() => new Map(allCategories.map((category) => [category.id, category])), [allCategories]);
 
   const filtered = useMemo(() => {
     if (isLoadingData) return [];
@@ -105,12 +108,12 @@ export default function TransactionsScreen() {
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((t) => {
-        const cat = getCategoryById(t.category);
+        const cat = categoriesById.get(t.category);
         return t.description.toLowerCase().includes(q) || (cat?.name ?? "").toLowerCase().includes(q);
       });
     }
     return result;
-  }, [transactions, filter, search, getCategoryById, isLoadingData]);
+  }, [transactions, filter, search, isLoadingData, categoriesById]);
 
   useEffect(() => {
     if (!selectionMode) return;
@@ -120,7 +123,6 @@ export default function TransactionsScreen() {
 
   const grouped = useMemo(() => groupTransactionsByDate(filtered), [filtered]);
   const goalById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
-  const categoriesById = useMemo(() => new Map(allCategories.map((category) => [category.id, category])), [allCategories]);
   const flatFilteredTransactions = useMemo(() => grouped.flatMap((group) => group.items), [grouped]);
   const dateLabelByDate = useMemo(() => new Map(grouped.map((group) => [group.date, group.label])), [grouped]);
 
@@ -170,17 +172,27 @@ export default function TransactionsScreen() {
     ]);
   };
 
-  const totalIncome = useMemo(() => transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0), [transactions]);
-  const totalExpense = useMemo(() => transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0), [transactions]);
-  const recurringIncome = useMemo(
-    () => transactions.filter((t) => t.type === "income" && t.recurrence && t.recurrence !== "none").reduce((s, t) => s + t.amount, 0),
-    [transactions],
-  );
-  const recurringExpense = useMemo(
-    () => transactions.filter((t) => t.type === "expense" && t.recurrence && t.recurrence !== "none").reduce((s, t) => s + t.amount, 0),
-    [transactions],
-  );
-  const recurringCount = useMemo(() => transactions.filter((t) => t.recurrence && t.recurrence !== "none").length, [transactions]);
+  const { totalIncome, totalExpense, recurringIncome, recurringExpense, recurringCount } = useMemo(() => {
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let recurringIncome = 0;
+    let recurringExpense = 0;
+    let recurringCount = 0;
+
+    for (const transaction of transactions) {
+      const isRecurring = Boolean(transaction.recurrence && transaction.recurrence !== "none");
+      if (transaction.type === "income") {
+        totalIncome += transaction.amount;
+        if (isRecurring) recurringIncome += transaction.amount;
+      } else {
+        totalExpense += transaction.amount;
+        if (isRecurring) recurringExpense += transaction.amount;
+      }
+      if (isRecurring) recurringCount += 1;
+    }
+
+    return { totalIncome, totalExpense, recurringIncome, recurringExpense, recurringCount };
+  }, [transactions]);
 
   const renderTransaction = useCallback(
     ({ item: tx, index }: { item: Transaction; index: number }) => {

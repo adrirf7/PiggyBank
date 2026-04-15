@@ -5,6 +5,13 @@ import { Category } from "@/types";
 import { addDoc, collection, doc, onSnapshot, query, updateDoc } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+const DEFAULT_CATEGORIES: Category[] = [
+  ...INCOME_CATEGORIES.map((category) => ({ ...category, isDefault: true })),
+  ...EXPENSE_CATEGORIES.map((category) => ({ ...category, isDefault: true })),
+];
+
+const DEFAULT_CATEGORIES_BY_ID = new Map(DEFAULT_CATEGORIES.map((category) => [category.id, category]));
+
 export function useCategoriesStore() {
   const { user } = useAuth();
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
@@ -34,51 +41,61 @@ export function useCategoriesStore() {
     return () => unsubscribe();
   }, [user]);
 
-  const allCategories = useMemo(() => {
-    const defaults: Category[] = [
-      ...INCOME_CATEGORIES.map((category) => ({ ...category, isDefault: true })),
-      ...EXPENSE_CATEGORIES.map((category) => ({ ...category, isDefault: true })),
-    ];
-    const deletedBaseIds = new Set(
-      customCategories
-        .filter((category) => category.baseCategoryId && category.isDeleted)
-        .map((category) => category.baseCategoryId!),
-    );
-    const customByBaseId = new Map(
-      customCategories
-        .filter((category) => !category.isDeleted && category.baseCategoryId)
-        .map((category) => [category.baseCategoryId!, category]),
-    );
+  const { allCategories, incomeCategories, expenseCategories, categoriesById } = useMemo(() => {
+    const deletedBaseIds = new Set<string>();
+    const customByBaseId = new Map<string, Category>();
+    const standaloneCustom: Category[] = [];
 
-    const mergedDefaults = defaults
-      .filter((defaultCategory) => !deletedBaseIds.has(defaultCategory.id))
-      .map((defaultCategory) => {
-        const customOverride = customByBaseId.get(defaultCategory.id);
-        if (!customOverride) return defaultCategory;
-        return {
-          ...defaultCategory,
-          ...customOverride,
-          id: defaultCategory.id,
-          isDefault: true,
-        };
+    for (const category of customCategories) {
+      if (category.baseCategoryId) {
+        if (category.isDeleted) {
+          deletedBaseIds.add(category.baseCategoryId);
+          continue;
+        }
+        customByBaseId.set(category.baseCategoryId, category);
+        continue;
+      }
+
+      if (!category.isDeleted) {
+        standaloneCustom.push(category);
+      }
+    }
+
+    const mergedDefaults: Category[] = [];
+    for (const defaultCategory of DEFAULT_CATEGORIES) {
+      if (deletedBaseIds.has(defaultCategory.id)) continue;
+      const customOverride = customByBaseId.get(defaultCategory.id);
+      if (!customOverride) {
+        mergedDefaults.push(defaultCategory);
+        continue;
+      }
+      mergedDefaults.push({
+        ...defaultCategory,
+        ...customOverride,
+        id: defaultCategory.id,
+        isDefault: true,
       });
+    }
 
-    const standaloneCustom = customCategories.filter((category) => !category.baseCategoryId && !category.isDeleted);
-    return [...mergedDefaults, ...standaloneCustom];
+    const allCategories = [...mergedDefaults, ...standaloneCustom];
+    const incomeCategories: Category[] = [];
+    const expenseCategories: Category[] = [];
+    const categoriesById = new Map<string, Category>();
+
+    for (const category of allCategories) {
+      if (category.isDeleted) continue;
+      categoriesById.set(category.id, category);
+      if (category.type === "income") {
+        incomeCategories.push(category);
+      } else if (category.type === "expense") {
+        expenseCategories.push(category);
+      }
+    }
+
+    return { allCategories, incomeCategories, expenseCategories, categoriesById };
   }, [customCategories]);
 
-  const incomeCategories = useMemo(
-    () => allCategories.filter((category) => category.type === "income" && !category.isDeleted),
-    [allCategories],
-  );
-  const expenseCategories = useMemo(
-    () => allCategories.filter((category) => category.type === "expense" && !category.isDeleted),
-    [allCategories],
-  );
-
-  const getCategoryById = useCallback((id: string): Category | undefined => {
-    return allCategories.find((category) => category.id === id);
-  }, [allCategories]);
+  const getCategoryById = useCallback((id: string): Category | undefined => categoriesById.get(id), [categoriesById]);
 
   const addCategory = async (data: Omit<Category, "id" | "isDefault">) => {
     if (!user) return;
@@ -109,7 +126,7 @@ export function useCategoriesStore() {
 
   const updateCategory = async (id: string, data: Pick<Category, "name" | "icon" | "color">) => {
     if (!user) return;
-    const defaultCategory = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES].find((category) => category.id === id);
+    const defaultCategory = DEFAULT_CATEGORIES_BY_ID.get(id);
     if (defaultCategory) {
       await upsertDefaultCategoryOverride(id, {
         ...data,
@@ -125,7 +142,7 @@ export function useCategoriesStore() {
 
   const deleteCategory = async (id: string) => {
     if (!user) return;
-    const defaultCategory = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES].find((category) => category.id === id);
+    const defaultCategory = DEFAULT_CATEGORIES_BY_ID.get(id);
     if (defaultCategory) {
       await upsertDefaultCategoryOverride(id, {
         name: defaultCategory.name,

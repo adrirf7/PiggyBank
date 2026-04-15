@@ -18,13 +18,12 @@ import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Category, Period } from "@/types";
 import {
+    aggregatePeriodTotals,
     calculatePercentageChange,
     filterByPeriod,
-    filterByPreviousPeriod,
     formatCurrency,
     getCategoryBreakdown,
     getChartDataForPeriod,
-    getTotalByType,
 } from "@/utils/calculations";
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -78,11 +77,10 @@ export default function AnalyticsScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const filtered = useMemo(() => filterByPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
-  const previousFiltered = useMemo(() => filterByPreviousPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
-  const income = getTotalByType(filtered, "income");
-  const expense = getTotalByType(filtered, "expense");
-  const previousIncome = getTotalByType(previousFiltered, "income");
-  const previousExpense = getTotalByType(previousFiltered, "expense");
+  const { currentIncome: income, currentExpense: expense, previousIncome, previousExpense } = useMemo(
+    () => aggregatePeriodTotals(transactions, period, referenceDate),
+    [transactions, period, referenceDate],
+  );
   const incomeChange = calculatePercentageChange(income, previousIncome);
   const expenseChange = calculatePercentageChange(expense, previousExpense);
   
@@ -95,19 +93,45 @@ export default function AnalyticsScreen() {
   const expenseBreakdown = useMemo(() => getCategoryBreakdown(filtered, "expense"), [filtered]);
   const incomeBreakdown = useMemo(() => getCategoryBreakdown(filtered, "income"), [filtered]);
   const chartData = useMemo(() => getChartDataForPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
+  const parsedFilteredMeta = useMemo(
+    () =>
+      filtered.map((transaction) => {
+        const parsedDate = parseISO(transaction.date);
+        return {
+          transaction,
+          weekIndex: (parsedDate.getDay() + 6) % 7,
+          monthDayIndex: parsedDate.getDate() - 1,
+          monthWeekIndex: Math.floor((parsedDate.getDate() - 1) / 7),
+          yearMonthIndex: parsedDate.getMonth(),
+        };
+      }),
+    [filtered],
+  );
+
   const chartDataDailyMonth = useMemo(() => {
     if (period !== "month") return chartData;
     const start = startOfMonth(referenceDate);
     const end = endOfMonth(referenceDate);
     const days = end.getDate();
+    const dailyTotals = new Map<string, { income: number; expense: number }>();
+
+    for (const transaction of transactions) {
+      const current = dailyTotals.get(transaction.date) ?? { income: 0, expense: 0 };
+      if (!transaction.isGoalContribution) {
+        if (transaction.type === "income") current.income += transaction.amount;
+        if (transaction.type === "expense") current.expense += transaction.amount;
+      }
+      dailyTotals.set(transaction.date, current);
+    }
+
     return Array.from({ length: days }, (_, i) => {
       const day = addDays(start, i);
       const dayStr = format(day, "yyyy-MM-dd");
-      const dayTxs = transactions.filter((t) => t.date === dayStr);
+      const totals = dailyTotals.get(dayStr) ?? { income: 0, expense: 0 };
       return {
         label: `${i + 1}`,
-        income: getTotalByType(dayTxs, "income"),
-        expense: getTotalByType(dayTxs, "expense"),
+        income: totals.income,
+        expense: totals.expense,
       };
     });
   }, [chartData, period, referenceDate, transactions]);
@@ -117,23 +141,22 @@ export default function AnalyticsScreen() {
     const length = primaryChartData.length;
     const income = Array.from({ length }, () => false);
     const expense = Array.from({ length }, () => false);
-    filtered.forEach((t) => {
+    parsedFilteredMeta.forEach(({ transaction: t, weekIndex, monthDayIndex, monthWeekIndex, yearMonthIndex }) => {
       if (t.isGoalContribution) return;
-      const d = parseISO(t.date);
       let idx = -1;
       if (period === "week") {
-        idx = (d.getDay() + 6) % 7;
+        idx = weekIndex;
       } else if (period === "month") {
-        idx = monthXAxisMode === "days" ? d.getDate() - 1 : Math.floor((d.getDate() - 1) / 7);
+        idx = monthXAxisMode === "days" ? monthDayIndex : monthWeekIndex;
       } else {
-        idx = d.getMonth();
+        idx = yearMonthIndex;
       }
       if (idx < 0 || idx >= length) return;
       if (t.type === "income") income[idx] = true;
       if (t.type === "expense") expense[idx] = true;
     });
     return { income, expense };
-  }, [filtered, monthXAxisMode, period, primaryChartData.length]);
+  }, [parsedFilteredMeta, monthXAxisMode, period, primaryChartData.length]);
   const primarySeriesElapsed = useMemo(() => {
     const length = primaryChartData.length;
     const elapsed = Array.from({ length }, () => false);
@@ -185,32 +208,36 @@ export default function AnalyticsScreen() {
     const source = mixedMode === "expense-categories" ? expenseBreakdown : incomeBreakdown;
     const type = mixedMode === "expense-categories" ? "expense" : "income";
     const top = source.slice(0, 5);
+    const topCategorySet = new Set(top.map((item) => item.category));
+    const bucketCount = mixedChartLabels.length;
+    const valuesByCategory = new Map<string, number[]>(top.map((item) => [item.category, Array.from({ length: bucketCount }, () => 0)]));
+
+    for (const { transaction, weekIndex, monthDayIndex, monthWeekIndex, yearMonthIndex } of parsedFilteredMeta) {
+      if (transaction.isGoalContribution || transaction.type !== type || !topCategorySet.has(transaction.category)) continue;
+      const values = valuesByCategory.get(transaction.category);
+      if (!values) continue;
+
+      let bucketIndex = -1;
+      if (period === "week") {
+        bucketIndex = weekIndex;
+      } else if (period === "month") {
+        bucketIndex = mixedMonthXAxisMode === "days" ? monthDayIndex : monthWeekIndex;
+      } else {
+        bucketIndex = yearMonthIndex;
+      }
+
+      if (bucketIndex >= 0 && bucketIndex < values.length) {
+        values[bucketIndex] += transaction.amount;
+      }
+    }
 
     return top.map((item) => ({
       key: item.category,
       label: categoriesById.get(item.category)?.name ?? item.category,
       color: categoriesById.get(item.category)?.color ?? (type === "expense" ? EXPENSE_COLOR : INCOME_COLOR),
-      values: mixedChartLabels.map((_, index) => {
-        const bucket = filtered.filter((t) => {
-          if (t.isGoalContribution || t.type !== type || t.category !== item.category) return false;
-          const d = parseISO(t.date);
-          if (period === "week") {
-            const day = (d.getDay() + 6) % 7;
-            return day === index;
-          }
-          if (period === "month") {
-            if (mixedMonthXAxisMode === "days") {
-              return d.getDate() - 1 === index;
-            }
-            const week = Math.floor((d.getDate() - 1) / 7);
-            return week === index;
-          }
-          return d.getMonth() === index;
-        });
-        return bucket.reduce((sum, tx) => sum + tx.amount, 0);
-      }),
+      values: valuesByCategory.get(item.category) ?? Array.from({ length: bucketCount }, () => 0),
     }));
-  }, [mixedChartLabels, mixedMode, expenseBreakdown, incomeBreakdown, categoriesById, filtered, period, mixedMonthXAxisMode]);
+  }, [mixedChartLabels, mixedMode, expenseBreakdown, incomeBreakdown, categoriesById, parsedFilteredMeta, period, mixedMonthXAxisMode]);
 
   const cardBg = isDark ? "#1E293B" : "#FFFFFF";
   const currency = userProfile?.currencyCode;

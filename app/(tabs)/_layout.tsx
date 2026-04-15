@@ -6,24 +6,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
-  const reducedMotion = useReducedMotion();
 
     return (
       <Tabs
-        detachInactiveScreens
         screenOptions={{
           headerShown: false,
           lazy: true,
-          freezeOnBlur: false,
-          unmountOnBlur: true,
-          animation: reducedMotion ? "none" : "fade",
+          freezeOnBlur: true,
+          unmountOnBlur: false,
+          animation: "none",
           sceneStyle: { backgroundColor: colors.background },
           tabBarActiveTintColor: PRIMARY,
           tabBarInactiveTintColor: colors.tabIconDefault,

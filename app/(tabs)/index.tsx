@@ -19,7 +19,7 @@ import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Period } from "@/types";
-import { calculatePercentageChange, compareTransactionsNewestFirst, filterByPeriod, filterByPreviousPeriod, formatCurrency, getTotalByType } from "@/utils/calculations";
+import { aggregatePeriodTotals, calculatePercentageChange, compareTransactionsNewestFirst, formatCurrency } from "@/utils/calculations";
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "week", label: "Semana" },
@@ -51,12 +51,7 @@ export default function DashboardScreen() {
 
   const { income, expense, incomeChange, expenseChange, incomeDifference, expenseDifference, incomeTrendSign, expenseTrendSign, incomeTrendColor, expenseTrendColor } =
     useMemo(() => {
-      const current = filterByPeriod(transactions, period);
-      const previous = filterByPreviousPeriod(transactions, period);
-      const currentIncome = getTotalByType(current, "income");
-      const currentExpense = getTotalByType(current, "expense");
-      const prevIncome = getTotalByType(previous, "income");
-      const prevExpense = getTotalByType(previous, "expense");
+      const { currentIncome, currentExpense, previousIncome: prevIncome, previousExpense: prevExpense } = aggregatePeriodTotals(transactions, period);
       const currIncomeChange = calculatePercentageChange(currentIncome, prevIncome);
       const currExpenseChange = calculatePercentageChange(currentExpense, prevExpense);
       const currIncomeDiff = currentIncome - prevIncome;
@@ -147,18 +142,18 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      return () => {
-        clearSelection();
-      };
-    }, [clearSelection]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
       requestAnimationFrame(() => {
         scrollRef.current?.scrollTo({ y: 0, animated: false });
       });
     }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        clearSelection();
+      };
+    }, [clearSelection]),
   );
 
   const greeting = useMemo(() => {
