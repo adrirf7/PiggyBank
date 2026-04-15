@@ -1,12 +1,5 @@
 import { auth, db } from "@/lib/firebase";
-import {
-  DEFAULT_COUNTRY,
-  DEFAULT_CURRENCY_CODE,
-  isSupportedCountry,
-  isSupportedCurrencyCode,
-  resolveCurrencyCodeFromCountry,
-  setCurrentCurrencyCode,
-} from "@/utils/currency";
+import { DEFAULT_COUNTRY, DEFAULT_CURRENCY_CODE, isSupportedCountry, isSupportedCurrencyCode, resolveCurrencyCodeFromCountry, setCurrentCurrencyCode } from "@/utils/currency";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
     createUserWithEmailAndPassword,
@@ -73,9 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (snap) => {
         const profile = snap.exists() ? (snap.data() as UserProfile) : {};
         const country = isSupportedCountry(profile.country) ? profile.country : DEFAULT_COUNTRY;
-        const currencyCode = isSupportedCurrencyCode(profile.currencyCode)
-          ? profile.currencyCode
-          : resolveCurrencyCodeFromCountry(country, DEFAULT_CURRENCY_CODE);
+        const currencyCode = isSupportedCurrencyCode(profile.currencyCode) ? profile.currencyCode : resolveCurrencyCodeFromCountry(country, DEFAULT_CURRENCY_CODE);
         setCurrentCurrencyCode(currencyCode);
         setUserProfile({ ...profile, country, currencyCode });
       },
@@ -116,12 +107,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
     } else {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      const idToken = (response as any)?.data?.idToken ?? (response as any)?.idToken;
-      if (!idToken) throw new Error("No se obtuvo el token de Google.");
-      const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
+      try {
+        await GoogleSignin.hasPlayServices();
+        const response = await GoogleSignin.signIn();
+        const idToken = (response as any)?.data?.idToken ?? (response as any)?.idToken;
+        if (!idToken) {
+          console.error("Google Sign-In response:", response);
+          throw new Error("No se obtuvo el token de Google.");
+        }
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
+      } catch (error: any) {
+        console.error("Google Sign-In error details:", {
+          code: error.code,
+          message: error.message,
+          fullError: error,
+        });
+        throw error;
+      }
     }
   };
 

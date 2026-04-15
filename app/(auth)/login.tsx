@@ -155,7 +155,9 @@ function GoogleSignInSection({ setError, colors }: { setError: (msg: string) => 
     try {
       await signInWithGoogle();
     } catch (e: any) {
-      setError(friendlyError(e.code ?? e.message));
+      const errorCode = e.code ?? e.message ?? String(e);
+      console.error("Google Sign-In handler error:", errorCode);
+      setError(friendlyError(errorCode));
     } finally {
       setGoogleLoading(false);
     }
@@ -202,6 +204,11 @@ function friendlyError(code: string): string {
       return "El inicio de sesión con correo no está habilitado.";
     case "auth/network-request-failed":
       return "Error de red. Comprueba tu conexión.";
+    case "10":
+      return "Error interno de Google Sign-In. Verifica tu configuración de Google Cloud Console.";
+    case "SIGN_IN_FAILED":
+    case "sign_in_failed":
+      return "Error al iniciar sesión con Google. Intenta de nuevo.";
     default:
       return `Error inesperado (${code}). Inténtalo de nuevo.`;
   }

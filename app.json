@@ -42,7 +42,14 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "@react-native-google-signin/google-signin"
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosClientId": "127868684471-bpi6g3u2mh0u6nm7kks8aq0hkof1n9hg.apps.googleusercontent.com",
+          "iosUrlScheme": "com.googleusercontent.apps.127868684471-bpi6g3u2mh0u6nm7kks8aq0hkof1n9hg",
+          "webClientId": "127868684471-hpo9enspjskojsrnnt2pu1givrmq0lo4.apps.googleusercontent.com"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
