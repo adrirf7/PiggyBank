@@ -1,5 +1,6 @@
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useAccount } from "@/context/account";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
@@ -31,13 +32,14 @@ const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", 
 export default function AddTransactionScreen() {
   const colors = Colors.dark;
   const router = useRouter();
-  const { transactionId } = useLocalSearchParams<{ transactionId?: string }>();
+  const { transactionId, type: typeParam } = useLocalSearchParams<{ transactionId?: string; type?: string }>();
   const { alert } = useAlert();
   const { userProfile } = useAuth();
+  const { activeAccount } = useAccount();
   const { transactions, addTransaction, updateTransaction } = useTransactionStore();
   const { incomeCategories, expenseCategories, allCategories } = useCategoriesStore();
 
-  const [type, setType] = useState<TransactionType>("expense");
+  const [type, setType] = useState<TransactionType>(() => typeParam === "income" ? "income" : "expense");
   const [amount, setAmount] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [description, setDescription] = useState("");
@@ -126,6 +128,7 @@ export default function AddTransactionScreen() {
       description: description.trim(),
       date: format(date, "yyyy-MM-dd"),
       createdAt: existingTransaction?.createdAt ?? new Date().toISOString(),
+      ...(activeAccount && !isEditing && { accountId: activeAccount.id }),
       ...(recurrence !== "none" && { recurrence }),
       ...(recurrence === "weekly" && selectedWeekDay !== null && { recurrenceWeekDay: selectedWeekDay }),
       ...(recurrence === "monthly" && selectedMonthDay !== null && { recurrenceMonthDay: selectedMonthDay }),
@@ -213,31 +216,13 @@ export default function AddTransactionScreen() {
           <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: colors.buttonSecondary }} onPress={() => router.back()}>
             <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
-          <Text className="text-base font-bold text-slate-800 dark:text-slate-100">{isEditing ? "Editar transacción" : "Nueva transacción"}</Text>
+          <Text className="text-base font-bold text-slate-800 dark:text-slate-100">
+            {isEditing ? "Editar transacción" : type === "income" ? "Nuevo ingreso" : "Nuevo gasto"}
+          </Text>
           <View className="w-10" />
         </View>
 
         <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-          {/* ── Income / Expense Toggle ── */}
-          <View className="flex-row mx-5 mb-6 rounded-2xl overflow-hidden" style={{ backgroundColor: colors.buttonSecondary }}>
-            {(["expense", "income"] as TransactionType[]).map((t) => (
-              <Pressable
-                key={t}
-                className="flex-1 py-3 items-center flex-row justify-center gap-x-2 rounded-2xl"
-                style={type === t ? { backgroundColor: activeColor } : undefined}
-                onPress={() => {
-                  setType(t);
-                  setSelectedCategory("");
-                }}
-              >
-                <Ionicons name={t === "income" ? "arrow-down-circle-outline" : "arrow-up-circle-outline"} size={18} color={type === t ? "#fff" : colors.muted} />
-                <Text className="text-sm font-semibold" style={{ color: type === t ? "#fff" : colors.muted }}>
-                  {t === "income" ? "Ingreso" : "Gasto"}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
           {/* ── Amount Input ── */}
           <View className="items-center mb-6 px-5">
             <Text className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">Importe</Text>

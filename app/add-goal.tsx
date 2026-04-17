@@ -8,6 +8,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
+import { useAccount } from "@/context/account";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
@@ -33,6 +34,7 @@ const GOAL_COLORS = ["#F97316", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6", "#EC
 export default function AddGoalScreen() {
   const colors = Colors.dark;
   const router = useRouter();
+  const { activeAccount } = useAccount();
   const { userProfile } = useAuth();
   const { alert } = useAlert();
   const { goalId } = useLocalSearchParams<{ goalId?: string }>();
@@ -79,6 +81,10 @@ export default function AddGoalScreen() {
       alert("Importe inválido", "El importe ya ahorrado debe ser 0 o mayor.");
       return;
     }
+    if (!isEditing && !activeAccount) {
+      alert("Cuenta no disponible", "Selecciona una cuenta antes de crear un objetivo.");
+      return;
+    }
 
     const data = {
       name: name.trim(),
@@ -86,6 +92,7 @@ export default function AddGoalScreen() {
       color: selectedColor,
       targetAmount: target,
       currentAmount: current,
+      accountId: existing?.accountId ?? activeAccount?.id,
       ...(targetDate ? { targetDate: format(targetDate, "yyyy-MM-dd") } : {}),
       createdAt: existing?.createdAt ?? format(new Date(), "yyyy-MM-dd"),
     };

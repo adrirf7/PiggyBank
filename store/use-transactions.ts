@@ -1,9 +1,9 @@
 import { useAuth } from "@/context/auth";
 import { db } from "@/lib/firebase";
 import { Transaction } from "@/types";
+import { compareTransactionsNewestFirst } from "@/utils/calculations";
 import { addDoc, collection, deleteDoc, doc, getDoc, increment, onSnapshot, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
-import { compareTransactionsNewestFirst } from "@/utils/calculations";
 
 export function useTransactionStore() {
   const { user } = useAuth();
@@ -103,6 +103,7 @@ export function useTransactionStore() {
    */
   const addGoalContribution = async (data: {
     goalId: string;
+    accountId?: string;
     type: "income" | "expense";
     amount: number;
     description: string;
@@ -125,6 +126,7 @@ export function useTransactionStore() {
       createdAt: new Date().toISOString(),
       goalId: data.goalId,
       isGoalContribution: true,
+      ...(data.accountId && { accountId: data.accountId }),
       ...(data.recurrence && { recurrence: data.recurrence }),
       ...(data.recurrenceMonthDay !== undefined && { recurrenceMonthDay: data.recurrenceMonthDay }),
       ...(data.recurrenceWeekDay !== undefined && { recurrenceWeekDay: data.recurrenceWeekDay }),
@@ -153,6 +155,7 @@ export function useTransactionStore() {
     oldTransaction: Transaction,
     data: {
       goalId: string;
+      accountId?: string;
       type: "income" | "expense";
       amount: number;
       description: string;
@@ -176,6 +179,7 @@ export function useTransactionStore() {
       date: data.date,
       goalId: data.goalId,
       isGoalContribution: true,
+      ...(data.accountId && { accountId: data.accountId }),
       ...(data.recurrence && { recurrence: data.recurrence }),
       ...(data.recurrenceMonthDay !== undefined && { recurrenceMonthDay: data.recurrenceMonthDay }),
       ...(data.recurrenceWeekDay !== undefined && { recurrenceWeekDay: data.recurrenceWeekDay }),

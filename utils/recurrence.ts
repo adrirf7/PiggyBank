@@ -57,12 +57,7 @@ export function shouldCreateRecurrence(transaction: Transaction, today: string):
     return false;
   }
 
-  const nextDate = getNextRecurrenceDate(
-    transaction.date,
-    transaction.recurrence,
-    transaction.recurrenceMonthDay,
-    transaction.recurrenceWeekDay,
-  );
+  const nextDate = getNextRecurrenceDate(transaction.date, transaction.recurrence, transaction.recurrenceMonthDay, transaction.recurrenceWeekDay);
   return nextDate <= today;
 }
 
@@ -107,6 +102,7 @@ export async function processRecurrentTransactions(
   addTransaction: (data: Omit<Transaction, "id">) => Promise<void>,
   addGoalContribution?: (data: {
     goalId: string;
+    accountId?: string;
     type: "income" | "expense";
     amount: number;
     description: string;
@@ -119,17 +115,13 @@ export async function processRecurrentTransactions(
   const toCreate = getRecurrencesToCreate(transactions);
 
   for (const tx of toCreate) {
-    const nextDate = getNextRecurrenceDate(
-      tx.date,
-      tx.recurrence!,
-      tx.recurrenceMonthDay,
-      tx.recurrenceWeekDay,
-    );
+    const nextDate = getNextRecurrenceDate(tx.date, tx.recurrence!, tx.recurrenceMonthDay, tx.recurrenceWeekDay);
 
     // Si es una aportación a objetivo, usar addGoalContribution
     if (tx.isGoalContribution && tx.goalId && addGoalContribution) {
       await addGoalContribution({
         goalId: tx.goalId,
+        accountId: tx.accountId,
         type: tx.type,
         amount: tx.amount,
         description: tx.description,

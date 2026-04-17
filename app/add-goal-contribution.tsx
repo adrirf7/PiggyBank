@@ -237,6 +237,7 @@ export default function AddGoalContributionScreen() {
     try {
       const contributionData = {
         goalId: goal.id,
+        accountId: goal.accountId,
         type: type === "add" ? "income" : "expense",
         amount: numAmount,
         description: description.trim() || (type === "add" ? `Aportación a ${goal.name}` : `Retiro de ${goal.name}`),

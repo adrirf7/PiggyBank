@@ -16,7 +16,8 @@ import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme"
 import { useAuth } from "@/context/auth";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useTransactionStore } from "@/store/use-transactions";
-import { Category, Period } from "@/types";
+import { Category, Period, Transaction } from "@/types";
+import { useAccount } from "@/context/account";
 import { aggregatePeriodTotals, calculatePercentageChange, filterByPeriod, formatCurrency, getCategoryBreakdown, getChartDataForPeriod } from "@/utils/calculations";
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -51,8 +52,17 @@ export default function AnalyticsScreen() {
   const colors = Colors.dark;
   const isDark = true;
   const router = useRouter();
-  const { transactions } = useTransactionStore();
+  const { transactions: allTransactions } = useTransactionStore();
   const { allCategories } = useCategoriesStore();
+  const { activeAccount, accounts } = useAccount();
+
+  const transactions = useMemo(() => {
+    if (!activeAccount) return allTransactions;
+    const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
+    return allTransactions.filter((tx: Transaction) =>
+      isDefault ? !tx.accountId || tx.accountId === activeAccount.id : tx.accountId === activeAccount.id,
+    );
+  }, [allTransactions, activeAccount, accounts]);
   const [period, setPeriod] = useState<Period>("month");
   const [referenceDate, setReferenceDate] = useState(new Date());
   const [periodSlideDirection, setPeriodSlideDirection] = useState<"left" | "right">("left");

@@ -1,9 +1,9 @@
 import { createNavigatorFactory, TabRouter, useNavigationBuilder } from "@react-navigation/core";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { withLayoutContext, useRouter } from "expo-router";
+import { withLayoutContext } from "expo-router";
 import React, { useEffect } from "react";
-import { Dimensions, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,7 +21,6 @@ const TAB_ITEMS = [
 ];
 
 function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = Colors.dark;
 
@@ -128,15 +127,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
             { bottom: pillBottom, height: tabBarTotalHeight, paddingBottom: Platform.OS === "ios" ? 10 : 6 + insets.bottom },
           ]}
         >
-          {TAB_ITEMS.slice(0, 2).map((item, i) => renderTab(item, i))}
-
-          <Pressable onPress={() => router.push("/add-transaction")} style={styles.addWrapper}>
-            <View style={styles.addButton}>
-              <Ionicons name="add" size={26} color="#FFFFFF" />
-            </View>
-          </Pressable>
-
-          {TAB_ITEMS.slice(2).map((item, i) => renderTab(item, i + 2))}
+          {TAB_ITEMS.map((item, i) => renderTab(item, i))}
         </View>
       </View>
     </NavigationContent>
@@ -144,7 +135,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
 }
 
 const createSwipeTabNavigator = createNavigatorFactory(SwipeTabNavigator as any);
-const { Navigator, Screen } = createSwipeTabNavigator();
+const { Navigator } = createSwipeTabNavigator();
 const SwipeTabs = withLayoutContext<any, typeof Navigator, any, any>(Navigator);
 
 export default function TabLayout() {
@@ -188,22 +179,5 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0.3,
   },
-  addWrapper: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: PRIMARY,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 10,
-  },
+
 });

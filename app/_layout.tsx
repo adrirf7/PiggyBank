@@ -10,6 +10,7 @@ import "../global.css";
 import { AlertDialogProvider } from "@/components/alert-dialog";
 import { Colors, PRIMARY } from "@/constants/theme";
 import { AuthProvider, useAuth } from "@/context/auth";
+import { AccountProvider } from "@/context/account";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export const unstable_settings = {
@@ -60,6 +61,7 @@ function RootNavigator() {
             <Stack.Screen name="(auth)" options={{ headerShown: false, animation: reducedMotion ? "none" : "fade" }} />
             <Stack.Screen name="add-transaction" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
             <Stack.Screen name="manage-categories" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
+          <Stack.Screen name="manage-accounts" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
             <Stack.Screen name="edit-profile" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
             <Stack.Screen name="savings-goals" options={{ headerShown: false, animation: reducedMotion ? "none" : "fade_from_bottom" }} />
             <Stack.Screen name="add-goal" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
@@ -76,7 +78,9 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <AccountProvider>
+        <RootNavigator />
+      </AccountProvider>
     </AuthProvider>
   );
 }

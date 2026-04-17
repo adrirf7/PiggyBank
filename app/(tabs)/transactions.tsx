@@ -14,6 +14,7 @@ import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Transaction, TransactionType } from "@/types";
+import { useAccount } from "@/context/account";
 import { formatCurrency, groupTransactionsByDate } from "@/utils/calculations";
 
 type Filter = "all" | TransactionType | "recurring";
@@ -29,9 +30,18 @@ export default function TransactionsScreen() {
   const colors = Colors.dark;
   const { alert } = useAlert();
   const { userProfile } = useAuth();
-  const { transactions, deleteTransactions, loading: transactionsLoading } = useTransactionStore();
+  const { transactions: allTransactions, deleteTransactions, loading: transactionsLoading } = useTransactionStore();
   const { allCategories } = useCategoriesStore();
   const { goals, loading: goalsLoading } = useSavingsGoalStore();
+  const { activeAccount, accounts } = useAccount();
+
+  const transactions = useMemo(() => {
+    if (!activeAccount) return allTransactions;
+    const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
+    return allTransactions.filter((tx: Transaction) =>
+      isDefault ? !tx.accountId || tx.accountId === activeAccount.id : tx.accountId === activeAccount.id,
+    );
+  }, [allTransactions, activeAccount, accounts]);
   const searchParams = useLocalSearchParams();
   const router = useRouter();
   const isLoadingData = transactionsLoading || goalsLoading;

@@ -15,6 +15,16 @@ export interface Transaction {
   recurrenceWeekDay?: number; // For weekly: which day of week (0-6, 0=Sunday)
   goalId?: string; // ID del objetivo de ahorro relacionado
   isGoalContribution?: boolean; // True si es aportación/retiro de objetivo
+  accountId?: string; // ID de la cuenta asociada
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  themeId: string;
+  icon?: string; // Icono de la cuenta (Ionicons)
+  createdAt: string; // ISO date "YYYY-MM-DD"
+  isDefault?: boolean;
 }
 
 export interface Category {
@@ -35,6 +45,7 @@ export interface SavingsGoal {
   color: string;
   targetAmount: number;
   currentAmount: number;
+  accountId?: string; // ID de la cuenta asociada
   targetDate?: string; // ISO date "YYYY-MM-DD"
   createdAt: string; // ISO date "YYYY-MM-DD"
 }

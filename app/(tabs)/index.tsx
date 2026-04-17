@@ -6,37 +6,40 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeInLeft,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import RollingNumber from "@/components/rolling-number";
+import { CardSwitcher } from "@/components/card-switcher";
 import TransactionItem from "@/components/transaction-item";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
+import { useAccount } from "@/context/account";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
-import { Period } from "@/types";
-import { aggregatePeriodTotals, calculatePercentageChange, compareTransactionsNewestFirst, formatCurrency } from "@/utils/calculations";
-
-const PERIODS: { key: Period; label: string }[] = [
-  { key: "week", label: "Semana" },
-  { key: "month", label: "Mes" },
-  { key: "year", label: "Año" },
-];
+import { Transaction } from "@/types";
+import { compareTransactionsNewestFirst, formatCurrency } from "@/utils/calculations";
 
 export default function DashboardScreen() {
   const colors = Colors.dark;
   const router = useRouter();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const { alert } = useAlert();
   const { transactions, deleteTransactions } = useTransactionStore();
   const { allCategories } = useCategoriesStore();
   const { goals } = useSavingsGoalStore();
-  const [period, setPeriod] = useState<Period>("month");
-  const [periodSlideDirection, setPeriodSlideDirection] = useState<"left" | "right">("left");
-  const [periodSelectorWidth, setPeriodSelectorWidth] = useState(0);
+  const { accounts, activeAccount, activeAccountId, switchAccount, loading: accountsLoading } = useAccount();
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const scrollRef = useRef<ScrollView>(null);
@@ -46,52 +49,32 @@ export default function DashboardScreen() {
     setSelectedIds([]);
   }, []);
 
-  const { income, expense, incomeChange, expenseChange, incomeDifference, expenseDifference, incomeTrendSign, expenseTrendSign, incomeTrendColor, expenseTrendColor } =
-    useMemo(() => {
-      const { currentIncome, currentExpense, previousIncome: prevIncome, previousExpense: prevExpense } = aggregatePeriodTotals(transactions, period);
-      const currIncomeChange = calculatePercentageChange(currentIncome, prevIncome);
-      const currExpenseChange = calculatePercentageChange(currentExpense, prevExpense);
-      const currIncomeDiff = currentIncome - prevIncome;
-      const currExpenseDiff = currentExpense - prevExpense;
+  const activeAccountTransactions = useMemo(() => {
+    if (!activeAccount) return transactions;
+    const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
+    return transactions.filter((tx: Transaction) => (isDefault ? !tx.accountId || tx.accountId === activeAccount.id : tx.accountId === activeAccount.id));
+  }, [transactions, activeAccount, accounts]);
 
-      return {
-        income: currentIncome,
-        expense: currentExpense,
-        incomeChange: currIncomeChange,
-        expenseChange: currExpenseChange,
-        incomeDifference: currIncomeDiff,
-        expenseDifference: currExpenseDiff,
-        incomeTrendSign: currIncomeDiff >= 0 ? "↑" : "↓",
-        expenseTrendSign: currExpenseDiff >= 0 ? "↑" : "↓",
-        incomeTrendColor: currIncomeChange.isPositive ? "#22c55e" : "#ef4444",
-        expenseTrendColor: !currExpenseChange.isPositive ? "#22c55e" : "#ef4444",
-      };
-    }, [transactions, period]);
-
-  const { balance, totalSaved, totalIncome, totalExpense } = useMemo(() => {
-    const incomeAcc = { total: 0, normal: 0, goal: 0 };
-    const expenseAcc = { total: 0, normal: 0, goal: 0 };
-
-    for (const tx of transactions) {
-      const isIncome = tx.type === "income";
-      const target = isIncome ? incomeAcc : expenseAcc;
-      target.total += tx.amount;
-      if (tx.isGoalContribution) {
-        target.goal += tx.amount;
-      } else {
-        target.normal += tx.amount;
+  const cardData = useMemo(() => {
+    return accounts.map((account, idx) => {
+      const isDefault = account.isDefault ?? idx === 0;
+      const accountTxs = transactions.filter((tx: Transaction) => (isDefault ? !tx.accountId || tx.accountId === account.id : tx.accountId === account.id));
+      const inc = { normal: 0, goal: 0 };
+      const exp = { normal: 0, goal: 0 };
+      for (const tx of accountTxs) {
+        const target = tx.type === "income" ? inc : exp;
+        if (tx.isGoalContribution) target.goal += tx.amount;
+        else target.normal += tx.amount;
       }
-    }
-
-    return {
-      balance: incomeAcc.normal - expenseAcc.normal - incomeAcc.goal + expenseAcc.goal,
-      totalSaved: incomeAcc.goal - expenseAcc.goal,
-      totalIncome: incomeAcc.normal,
-      totalExpense: expenseAcc.normal,
-    };
-  }, [transactions]);
-
-  const periodBalance = income - expense;
+      return {
+        account,
+        balance: inc.normal - exp.normal - inc.goal + exp.goal,
+        totalIncome: inc.normal,
+        totalExpense: exp.normal,
+        totalSaved: inc.goal - exp.goal,
+      };
+    });
+  }, [accounts, transactions]);
 
   const { totalGoalTarget, totalGoalCurrent, goalPercent } = useMemo(() => {
     let target = 0;
@@ -100,7 +83,6 @@ export default function DashboardScreen() {
       target += goal.targetAmount;
       current += goal.currentAmount;
     }
-
     return {
       totalGoalTarget: target,
       totalGoalCurrent: current,
@@ -108,13 +90,13 @@ export default function DashboardScreen() {
     };
   }, [goals]);
 
-  const recentTxs = useMemo(() => [...transactions].sort(compareTransactionsNewestFirst).slice(0, 7), [transactions]);
-  const goalById = useMemo(() => new Map(goals.map((goal) => [goal.id, goal])), [goals]);
-  const categoriesById = useMemo(() => new Map(allCategories.map((category) => [category.id, category])), [allCategories]);
+  const recentTxs = useMemo(() => [...activeAccountTransactions].sort(compareTransactionsNewestFirst).slice(0, 7), [activeAccountTransactions]);
+  const goalById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
+  const categoriesById = useMemo(() => new Map(allCategories.map((c) => [c.id, c])), [allCategories]);
   const selectedTransactions = useMemo(() => {
     if (selectedIds.length === 0) return [];
-    const selectedSet = new Set(selectedIds);
-    return recentTxs.filter((tx) => selectedSet.has(tx.id));
+    const set = new Set(selectedIds);
+    return recentTxs.filter((tx) => set.has(tx.id));
   }, [recentTxs, selectedIds]);
 
   useEffect(() => {
@@ -125,32 +107,23 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const backSubscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
         if (!selectionMode) return false;
         clearSelection();
         return true;
       });
-
-      return () => {
-        backSubscription.remove();
-      };
+      return () => sub.remove();
     }, [selectionMode, clearSelection]),
   );
 
   useFocusEffect(
     useCallback(() => {
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ y: 0, animated: false });
-      });
+      requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: false }));
     }, []),
   );
 
   useFocusEffect(
-    useCallback(() => {
-      return () => {
-        clearSelection();
-      };
-    }, [clearSelection]),
+    useCallback(() => () => clearSelection(), [clearSelection]),
   );
 
   const greeting = useMemo(() => {
@@ -161,38 +134,13 @@ export default function DashboardScreen() {
   }, []);
 
   const firstName = user?.displayName?.split(" ")[0] ?? null;
-
   const today = format(new Date(), "EEEE, d MMMM", { locale: es });
   const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1);
-  const periodIndex = PERIODS.findIndex(({ key }) => key === period);
-
-  const handlePeriodChange = (nextPeriod: Period) => {
-    if (nextPeriod === period) return;
-    const nextPeriodIndex = PERIODS.findIndex(({ key }) => key === nextPeriod);
-    setPeriodSlideDirection(nextPeriodIndex > periodIndex ? "left" : "right");
-    setPeriod(nextPeriod);
-  };
-
-  const periodEnteringAnimation = periodSlideDirection === "left" ? SlideInRight.duration(220) : SlideInLeft.duration(220);
-  const periodExitingAnimation = periodSlideDirection === "left" ? SlideOutLeft.duration(220) : SlideOutRight.duration(220);
-  const periodIndicatorX = useSharedValue(0);
-
-  const periodIndicatorWidth = periodSelectorWidth > 8 ? (periodSelectorWidth - 8) / PERIODS.length : 0;
-
-  useEffect(() => {
-    periodIndicatorX.value = withTiming(periodIndex * periodIndicatorWidth, { duration: 220 });
-  }, [periodIndex, periodIndicatorWidth, periodIndicatorX]);
-
-  const periodIndicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: periodIndicatorX.value }],
-  }));
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((currentId) => currentId !== id) : [...prev, id];
-      if (next.length === 0) {
-        setSelectionMode(false);
-      }
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      if (next.length === 0) setSelectionMode(false);
       return next;
     });
   };
@@ -202,21 +150,17 @@ export default function DashboardScreen() {
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
 
-  const exitSelectionMode = () => {
-    clearSelection();
-  };
-
   const handleDeleteSelected = () => {
     if (selectedTransactions.length === 0) return;
-    const amountText = selectedTransactions.length === 1 ? "1 transacción" : `${selectedTransactions.length} transacciones`;
-    alert("Eliminar transacciones", `¿Seguro que quieres eliminar ${amountText}?`, [
+    const label = selectedTransactions.length === 1 ? "1 transacción" : `${selectedTransactions.length} transacciones`;
+    alert("Eliminar transacciones", `¿Seguro que quieres eliminar ${label}?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Eliminar",
         style: "destructive",
         onPress: async () => {
           await deleteTransactions(selectedTransactions);
-          exitSelectionMode();
+          clearSelection();
         },
       },
     ]);
@@ -225,336 +169,404 @@ export default function DashboardScreen() {
   const openTransactionInMovements = (transactionId: string) => {
     router.push({
       pathname: "/(tabs)/transactions",
-      params: {
-        filter: "all",
-        focusTransactionId: transactionId,
-        focusNonce: Date.now().toString(),
-      },
+      params: { filter: "all", focusTransactionId: transactionId, focusNonce: Date.now().toString() },
     });
   };
 
-  const deleteButtonColor = selectedIds.length > 0 ? "#EF4444" : colors.border;
+  // ── Icon pulse: all three action icons breathe slowly in sync ─────────────
+  const iconPulse = useSharedValue(1);
+  useEffect(() => {
+    iconPulse.value = withDelay(
+      800,
+      withRepeat(
+        withSequence(
+          withTiming(1.12, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        false,
+      ),
+    );
+  }, [iconPulse]);
+
+  const iconPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconPulse.value }],
+  }));
+
+  // ── Goal bar: fills from 0% to actual percent with a spring feel ──────────
+  const goalBarSv = useSharedValue(0);
+  useEffect(() => {
+    goalBarSv.value = withDelay(
+      500,
+      withTiming(goalPercent, { duration: 1400, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [goalPercent, goalBarSv]);
+
+  const goalBarStyle = useAnimatedStyle(() => ({
+    width: `${goalBarSv.value}%`,
+  }));
+
+  // ── Header avatar: tiny wiggle on mount ───────────────────────────────────
+  const avatarWiggle = useSharedValue(0);
+  useEffect(() => {
+    avatarWiggle.value = withDelay(
+      600,
+      withSequence(
+        withTiming(-8, { duration: 80 }),
+        withTiming(8, { duration: 80 }),
+        withTiming(-5, { duration: 70 }),
+        withTiming(5, { duration: 70 }),
+        withTiming(0, { duration: 60 }),
+      ),
+    );
+  }, [avatarWiggle]);
+
+  const avatarWiggleStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${avatarWiggle.value}deg` }],
+  }));
+
+  // ── "Recientes" title: subtle slide-in from left ──────────────────────────
+  const sectionTitleEnter = FadeInLeft.duration(400).delay(300).springify();
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* ── Header ── */}
-        <Animated.View entering={FadeInDown.duration(400)} className="flex-row items-center justify-between px-5 pt-3 pb-2">
-          <View>
-            <Text className="text-xs text-slate-400 dark:text-slate-500 capitalize">{todayCapitalized}</Text>
-            <Text className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5">
-              {greeting}
-              {firstName ? `, ${firstName}` : ""}
-            </Text>
-          </View>
-          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: PRIMARY + "24" }} onPress={() => router.push("/add-transaction")}>
-            <Ionicons name="add" size={22} color={PRIMARY} />
-          </Pressable>
-        </Animated.View>
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
+      <LinearGradient
+        colors={["#06101F", "#030810", "#000000"]}
+        locations={[0, 0.45, 1]}
+        start={{ x: 0.3, y: 0 }}
+        end={{ x: 0.7, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
 
-        {/* ── Balance Card ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(60)} className="mx-5 mt-2.5">
-          <LinearGradient colors={["#1A2234", "#0A0E18"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
-            <View style={styles.circle1} />
-            <View style={styles.circle2} />
-            <Text style={styles.balanceLabel}>Saldo disponible</Text>
-            <RollingNumber value={balance} style={styles.balanceAmount} currencyCode={userProfile?.currencyCode} hasData={transactions.length > 0} />
-            <View style={styles.balanceRow}>
-              <View style={styles.balanceStat}>
-                <Ionicons name="trending-up" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.balanceStatLabel}> Ingresos totales</Text>
-              </View>
-              <Text style={styles.balanceStatValue}>{formatCurrency(totalIncome, userProfile?.currencyCode)}</Text>
-            </View>
-            <View style={[styles.balanceRow, { marginTop: 6 }]}>
-              <View style={styles.balanceStat}>
-                <Ionicons name="trending-down" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.balanceStatLabel}> Gastos totales</Text>
-              </View>
-              <Text style={styles.balanceStatValue}>{formatCurrency(totalExpense, userProfile?.currencyCode)}</Text>
-            </View>
-            <View style={[styles.balanceRow, { marginTop: 6 }]}>
-              <View style={styles.balanceStat}>
-                <Ionicons name="wallet" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.balanceStatLabel}> Dinero ahorrado</Text>
-              </View>
-              <Text style={styles.balanceStatValue}>{formatCurrency(totalSaved, userProfile?.currencyCode)}</Text>
-            </View>
-          </LinearGradient>
-        </Animated.View>
+      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "transparent" }}>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* ── Period selector ── */}
-        <Animated.View
-          entering={FadeInDown.duration(400).delay(120)}
-          className="relative flex-row mx-5 mt-4 rounded-xl p-1"
-          style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
-          onLayout={(event) => setPeriodSelectorWidth(event.nativeEvent.layout.width)}
-        >
-          {periodIndicatorWidth > 0 && (
-            <Animated.View
-              pointerEvents="none"
-              className="absolute top-1 bottom-1 rounded-lg"
-              style={[
-                {
-                  left: 4,
-                  width: periodIndicatorWidth,
-                  backgroundColor: PRIMARY,
-                },
-                periodIndicatorStyle,
-              ]}
-            />
-          )}
-          {PERIODS.map(({ key, label }) => (
-            <Pressable key={key} onPress={() => handlePeriodChange(key)} className="flex-1 items-center py-2 rounded-lg">
-              <Text className="text-sm font-semibold" style={{ color: period === key ? "#fff" : colors.muted }}>
-                {label}
+          {/* ── Header ── */}
+          <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
+            <Animated.View entering={FadeInLeft.duration(400).delay(100).springify()}>
+              <Text style={styles.headerDate}>{todayCapitalized}</Text>
+              <Text style={styles.headerGreeting}>
+                {greeting}{firstName ? `, ${firstName}` : ""}
               </Text>
-            </Pressable>
-          ))}
-        </Animated.View>
+            </Animated.View>
+            <Animated.View style={avatarWiggleStyle}>
+              <Pressable style={styles.avatarBtn} onPress={() => router.push("/(tabs)/profile")}>
+                <Ionicons name="person" size={18} color={PRIMARY} />
+              </Pressable>
+            </Animated.View>
+          </Animated.View>
 
-        <View className="mx-5 mt-3 overflow-hidden">
-          <Animated.View key={period} entering={periodEnteringAnimation} exiting={periodExitingAnimation}>
-            {/* ── Stats Cards ── */}
-            <View className="flex-row gap-x-3">
+          {/* ── Card Switcher ── */}
+          <Animated.View
+            entering={FadeInDown.duration(600).delay(80).springify()}
+            style={styles.section}
+          >
+            <CardSwitcher
+              cards={cardData}
+              activeAccountId={activeAccountId}
+              onSelectAccount={switchAccount}
+              onAddAccount={() => router.push("/manage-accounts")}
+              currencyCode={userProfile?.currencyCode}
+              userName={firstName || user?.displayName || undefined}
+              userCountry={userProfile?.country}
+              isLoading={authLoading || accountsLoading}
+            />
+          </Animated.View>
+
+          {/* ── Quick Actions ── */}
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(160).springify()}
+            style={[styles.section, { gap: 10 }]}
+          >
+            {/* Income + Expense */}
+            <View style={[styles.actionCard, { flexDirection: "row", padding: 0, overflow: "hidden" }]}>
               <Pressable
-                className="flex-1 rounded-2xl p-4 active:opacity-70"
-                style={[styles.card, { backgroundColor: colors.card }]}
-                onPress={() => router.push("/transactions?filter=income")}
+                style={styles.actionBtn}
+                onPress={() => router.push({ pathname: "/add-transaction", params: { type: "income" } })}
               >
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: INCOME_COLOR + "20" }}>
-                    <Ionicons name="trending-up" size={18} color={INCOME_COLOR} />
-                  </View>
-                  <View className="rounded-2xl px-2.5 py-1.5" style={{ backgroundColor: incomeTrendColor + "16", borderWidth: 1, borderColor: incomeTrendColor + "35" }}>
-                    <View className="flex-row items-center gap-1.5">
-                      <Text style={[styles.trendBubbleText, { color: incomeTrendColor }]}>{incomeTrendSign}</Text>
-                      <View>
-                        <Text style={[styles.trendBubbleAmountText, { color: incomeTrendColor, textAlign: "right" }]}>
-                          {formatCurrency(Math.abs(incomeDifference), userProfile?.currencyCode)}
-                        </Text>
-                        <Text style={[styles.trendBubblePercentText, { color: incomeTrendColor, textAlign: "right" }]}>{Math.abs(incomeChange.percentage).toFixed(1)}%</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-                <Text className="text-xs text-slate-400 dark:text-slate-500 mb-1">Ingresos</Text>
-                <Text className="text-base font-bold" style={{ color: INCOME_COLOR }} numberOfLines={1} adjustsFontSizeToFit>
-                  {formatCurrency(income, userProfile?.currencyCode)}
-                </Text>
+                <Animated.View style={[styles.actionIcon, { backgroundColor: INCOME_COLOR + "18" }, iconPulseStyle]}>
+                  <Ionicons name="arrow-down" size={20} color={INCOME_COLOR} />
+                </Animated.View>
+                <Text style={styles.actionLabel}>Añadir</Text>
+                <Text style={[styles.actionSub, { color: INCOME_COLOR }]}>Ingreso</Text>
               </Pressable>
 
+              <View style={styles.actionDivider} />
+
               <Pressable
-                className="flex-1 rounded-2xl p-4 active:opacity-70"
-                style={[styles.card, { backgroundColor: colors.card }]}
-                onPress={() => router.push("/transactions?filter=expense")}
+                style={styles.actionBtn}
+                onPress={() => router.push({ pathname: "/add-transaction", params: { type: "expense" } })}
               >
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: EXPENSE_COLOR + "20" }}>
-                    <Ionicons name="trending-down" size={18} color={EXPENSE_COLOR} />
-                  </View>
-                  <View className="rounded-2xl px-2.5 py-1.5" style={{ backgroundColor: expenseTrendColor + "16", borderWidth: 1, borderColor: expenseTrendColor + "35" }}>
-                    <View className="flex-row items-center gap-1.5">
-                      <Text style={[styles.trendBubbleText, { color: expenseTrendColor }]}>{expenseTrendSign}</Text>
-                      <View>
-                        <Text style={[styles.trendBubbleAmountText, { color: expenseTrendColor, textAlign: "right" }]}>
-                          {formatCurrency(Math.abs(expenseDifference), userProfile?.currencyCode)}
-                        </Text>
-                        <Text style={[styles.trendBubblePercentText, { color: expenseTrendColor, textAlign: "right" }]}>{Math.abs(expenseChange.percentage).toFixed(1)}%</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-                <Text className="text-xs text-slate-400 dark:text-slate-500 mb-1">Gastos</Text>
-                <Text className="text-base font-bold" style={{ color: EXPENSE_COLOR }} numberOfLines={1} adjustsFontSizeToFit>
-                  {formatCurrency(expense, userProfile?.currencyCode)}
-                </Text>
+                <Animated.View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: EXPENSE_COLOR + "18" },
+                    iconPulseStyle,
+                    // Offset phase so the expense icon pulses slightly after income
+                    { animationDelay: 300 } as any,
+                  ]}
+                >
+                  <Ionicons name="arrow-up" size={20} color={EXPENSE_COLOR} />
+                </Animated.View>
+                <Text style={styles.actionLabel}>Añadir</Text>
+                <Text style={[styles.actionSub, { color: EXPENSE_COLOR }]}>Gasto</Text>
               </Pressable>
             </View>
 
-            {/* ── Period balance ── */}
-            {(income > 0 || expense > 0) && (
-              <Pressable onPress={() => router.push("/(tabs)/analytics")}>
-                <View className="mt-2.5 rounded-2xl px-4 py-3 flex-row justify-between items-center" style={[styles.card, { backgroundColor: colors.card }]}>
-                  <View className="flex-row items-center">
-                    <View className="w-8 h-8 rounded-full items-center justify-center mr-2" style={{ backgroundColor: (periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR) + "20" }}>
-                      <Ionicons name={periodBalance >= 0 ? "trending-up" : "trending-down"} size={16} color={periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR} />
-                    </View>
-                    <Text className="text-sm text-slate-500 dark:text-slate-400">Balance del período</Text>
-                  </View>
-                  <View
-                    className="rounded-2xl px-2.5 py-1.5"
-                    style={{
-                      backgroundColor: (periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR) + "16",
-                      borderWidth: 1,
-                      borderColor: (periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR) + "35",
-                    }}
-                  >
-                    <Text className="text-sm font-bold" style={{ color: periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR }}>
-                      {periodBalance >= 0 ? "+" : ""}
-                      {formatCurrency(periodBalance, userProfile?.currencyCode)}
+            {/* Savings Goals */}
+            <Pressable
+              style={[styles.actionCard, { flexDirection: "row", alignItems: "center" }]}
+              onPress={() => router.push("/savings-goals")}
+            >
+              <Animated.View style={[styles.actionIcon, { backgroundColor: PRIMARY + "18", marginRight: 14 }, iconPulseStyle]}>
+                <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
+              </Animated.View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionLabel}>Objetivos de ahorro</Text>
+                {goals.length === 0 ? (
+                  <Text style={[styles.actionSub, { color: colors.muted, marginTop: 3 }]}>Crea tu primer objetivo</Text>
+                ) : (
+                  <>
+                    <Text style={[styles.actionSub, { color: colors.muted, marginTop: 3 }]}>
+                      {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de{" "}
+                      {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
                     </Text>
-                  </View>
+                    {/* Animated progress bar */}
+                    <View style={styles.goalBarTrack}>
+                      <Animated.View style={[styles.goalBarFill, goalBarStyle]} />
+                    </View>
+                  </>
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} style={{ marginLeft: 8 }} />
+            </Pressable>
+          </Animated.View>
+
+          {/* ── Recent Transactions ── */}
+          <Animated.View
+            entering={FadeInDown.duration(500).delay(240).springify()}
+            style={[styles.section, { marginTop: 20 }]}
+          >
+            <Animated.View entering={sectionTitleEnter} style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recientes</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                {selectionMode && (
+                  <Pressable onPress={clearSelection}>
+                    <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>Cancelar</Text>
+                  </Pressable>
+                )}
+                {transactions.length > 7 && (
+                  <Pressable onPress={() => router.push("/(tabs)/transactions")}>
+                    <Text style={{ color: PRIMARY, fontSize: 13, fontWeight: "600" }}>Ver todo</Text>
+                  </Pressable>
+                )}
+              </View>
+            </Animated.View>
+
+            {recentTxs.length > 0 && (
+              <Text style={styles.selectionHint}>
+                {selectionMode
+                  ? `${selectedIds.length} seleccionada${selectedIds.length === 1 ? "" : "s"} · Mantén pulsado para seleccionar`
+                  : "Mantén pulsado para seleccionar y borrar varias"}
+              </Text>
+            )}
+
+            {recentTxs.length === 0 ? (
+              <Animated.View entering={FadeInDown.duration(400).delay(350).springify()} style={styles.emptyState}>
+                <View style={[styles.emptyIcon, { backgroundColor: PRIMARY + "15" }]}>
+                  <Ionicons name="wallet-outline" size={30} color={PRIMARY} />
                 </View>
-              </Pressable>
+                <Text style={styles.emptyText}>
+                  Aún no hay transacciones.{"\n"}Usa los botones de arriba para añadir.
+                </Text>
+              </Animated.View>
+            ) : (
+              <>
+                {recentTxs.map((tx, i) => (
+                  // Stagger each transaction item: 50ms per item, max 350ms
+                  <Animated.View
+                    key={tx.id}
+                    entering={FadeInDown.duration(350).delay(Math.min(i * 55, 350)).springify()}
+                  >
+                    <TransactionItem
+                      transaction={tx}
+                      goalById={goalById}
+                      categoriesById={categoriesById}
+                      selectable={selectionMode}
+                      selected={selectedIds.includes(tx.id)}
+                      onPress={selectionMode ? toggleSelected : openTransactionInMovements}
+                      onLongPress={enterSelectionMode}
+                    />
+                  </Animated.View>
+                ))}
+                {selectionMode && <View style={{ height: 90 }} />}
+              </>
             )}
           </Animated.View>
-        </View>
 
-        {/* ── Goals Quick Access ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(300)} className="mx-5 mt-2.5">
-          <Pressable className="rounded-2xl p-4 flex-row items-center" style={[styles.card, { backgroundColor: colors.card }]} onPress={() => router.push("/savings-goals")}>
-            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: PRIMARY + "15" }}>
-              <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-bold text-slate-700 dark:text-slate-200">Objetivos de ahorro</Text>
-              {goals.length === 0 ? (
-                <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Crea tu primer objetivo</Text>
-              ) : (
-                <>
-                  <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de{" "}
-                    {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
-                  </Text>
-                  <View className="h-1.5 rounded-full overflow-hidden mt-2" style={{ backgroundColor: colors.border }}>
-                    <View className="h-full rounded-full" style={{ width: `${goalPercent}%`, backgroundColor: PRIMARY }} />
-                  </View>
-                </>
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.muted} style={{ marginLeft: 8 }} />
-          </Pressable>
-        </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
 
-        {/* ── Recent Transactions ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(360)} className="mt-4 mx-5">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-base font-bold text-slate-800 dark:text-slate-100">Recientes</Text>
-            <View className="flex-row items-center gap-3">
-              {selectionMode && (
-                <Pressable onPress={exitSelectionMode}>
-                  <Text className="text-sm font-medium text-slate-500 dark:text-slate-400">Cancelar</Text>
-                </Pressable>
-              )}
-              {transactions.length > 7 && (
-                <Pressable onPress={() => router.push("/(tabs)/transactions")}>
-                  <Text className="text-sm font-medium" style={{ color: PRIMARY }}>
-                    Ver todo
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-          {recentTxs.length > 0 && (
-            <Text className="text-xs text-slate-400 dark:text-slate-500 mb-2">
-              {selectionMode
-                ? `${selectedIds.length} seleccionada${selectedIds.length === 1 ? "" : "s"} · Mantén pulsado para seleccionar`
-                : "Mantén pulsado para seleccionar y borrar varias"}
-            </Text>
-          )}
-
-          {recentTxs.length === 0 ? (
-            <View className="items-center py-12">
-              <View className="w-16 h-16 rounded-full items-center justify-center mb-4" style={{ backgroundColor: PRIMARY + "15" }}>
-                <Ionicons name="wallet-outline" size={32} color={PRIMARY} />
-              </View>
-              <Text className="text-slate-500 dark:text-slate-400 text-sm text-center leading-6">
-                Aún no hay transacciones.{"\n"}Pulsa{" "}
-                <Text className="font-bold" style={{ color: PRIMARY }}>
-                  +
-                </Text>{" "}
-                para añadir la primera.
-              </Text>
-            </View>
-          ) : (
-            <>
-              {recentTxs.map((tx) => (
-                <TransactionItem
-                  key={tx.id}
-                  transaction={tx}
-                  goalById={goalById}
-                  categoriesById={categoriesById}
-                  selectable={selectionMode}
-                  selected={selectedIds.includes(tx.id)}
-                  onPress={selectionMode ? toggleSelected : openTransactionInMovements}
-                  onLongPress={enterSelectionMode}
-                />
-              ))}
-              {selectionMode && <View style={{ height: 90 }} />}
-            </>
-          )}
-        </Animated.View>
-      </ScrollView>
+      {/* ── Bulk delete FAB ── */}
       {selectionMode && (
-        <Animated.View entering={FadeInDown.duration(400).delay(220)}>
+        <Animated.View
+          entering={FadeInDown.duration(300).springify()}
+          style={styles.fabWrapper}
+        >
           <Pressable
-            className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
-            style={[styles.fab, { backgroundColor: deleteButtonColor }]}
+            style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : colors.border }]}
             disabled={selectedIds.length === 0}
             onPress={handleDeleteSelected}
           >
-            <Text className="text-white font-bold text-sm">Eliminar seleccionadas ({selectedIds.length})</Text>
+            <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>
+              Eliminar seleccionadas ({selectedIds.length})
+            </Text>
           </Pressable>
         </Animated.View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  balanceCard: {
-    borderRadius: 24,
-    padding: 24,
-    overflow: "hidden",
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
-  circle1: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    top: -40,
-    right: -40,
+  section: {
+    marginHorizontal: 20,
+    marginTop: 16,
   },
-  circle2: {
-    position: "absolute",
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    bottom: -20,
-    left: 30,
-  },
-  balanceLabel: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 13,
+  headerDate: {
+    color: "rgba(255,255,255,0.38)",
+    fontSize: 12,
     fontWeight: "500",
-    marginBottom: 4,
+    letterSpacing: 0.2,
   },
-  balanceAmount: {
+  headerGreeting: {
     color: "#FFFFFF",
-    fontSize: 36,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: 3,
+    letterSpacing: -0.3,
+  },
+  avatarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: PRIMARY + "20",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: PRIMARY + "30",
+  },
+  actionCard: {
+    backgroundColor: "#0E0E0E",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#1C1C1C",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  actionBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+  },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  actionLabel: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  actionSub: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  actionDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: "#222222",
+    marginVertical: 14,
+  },
+  goalBarTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+    marginTop: 8,
+    backgroundColor: "#1E1E1E",
+  },
+  goalBarFill: {
+    height: "100%",
+    borderRadius: 2,
+    backgroundColor: PRIMARY,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  selectionHint: {
+    color: "#606060",
+    fontSize: 11,
+    marginBottom: 10,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 48,
+  },
+  emptyIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
-  balanceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  emptyText: {
+    color: "#606060",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 22,
   },
-  balanceStat: { flexDirection: "row", alignItems: "center" },
-  balanceStatLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
-  balanceStatValue: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
-  trendBubbleText: { fontSize: 11, lineHeight: 14, fontWeight: "700", includeFontPadding: false },
-  trendBubbleAmountText: { fontSize: 11, lineHeight: 13.5, fontWeight: "700", includeFontPadding: false },
-  trendBubblePercentText: { fontSize: 10, lineHeight: 12, fontWeight: "700", includeFontPadding: false },
-  card: {
+  fabWrapper: {
+    position: "absolute",
+    bottom: 28,
+    left: 24,
+    right: 24,
+  },
+  fab: {
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
   },
 });

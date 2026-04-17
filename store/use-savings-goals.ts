@@ -1,17 +1,19 @@
+import { useAccount } from "@/context/account";
 import { useAuth } from "@/context/auth";
 import { db } from "@/lib/firebase";
 import { SavingsGoal } from "@/types";
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function useSavingsGoalStore() {
   const { user } = useAuth();
-  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const { activeAccount, accounts } = useAccount();
+  const [allGoals, setAllGoals] = useState<SavingsGoal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
-      setGoals([]);
+      setAllGoals([]);
       setLoading(false);
       return;
     }
@@ -21,17 +23,23 @@ export function useSavingsGoalStore() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        setGoals(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SavingsGoal, "id">) })));
+        setAllGoals(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SavingsGoal, "id">) })));
         setLoading(false);
       },
       () => {
-        setGoals([]);
+        setAllGoals([]);
         setLoading(false);
       },
     );
 
     return unsubscribe;
   }, [user?.uid, user]);
+
+  const goals = useMemo(() => {
+    if (!activeAccount) return allGoals;
+    const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
+    return allGoals.filter((goal) => (isDefault ? !goal.accountId || goal.accountId === activeAccount.id : goal.accountId === activeAccount.id));
+  }, [allGoals, activeAccount, accounts]);
 
   const addGoal = async (data: Omit<SavingsGoal, "id">) => {
     if (!user) return;

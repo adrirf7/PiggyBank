@@ -315,8 +315,9 @@ export function getChartDataForPeriod(transactions: Transaction[], period: Perio
     }
 
     case "year": {
+      const currentYear = now.getFullYear();
       return Array.from({ length: 12 }, (_, i) => {
-        const monthDate = new Date(year, i, 1);
+        const monthDate = new Date(currentYear, i, 1);
         const monthTotals = monthlyTotals.get(i) ?? { income: 0, expense: 0 };
         return {
           label: format(monthDate, "MMM", { locale: es }),
