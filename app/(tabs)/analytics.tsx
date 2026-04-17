@@ -85,7 +85,7 @@ export default function AnalyticsScreen() {
   const expenseBreakdown = useMemo(() => getCategoryBreakdown(filtered, "expense"), [filtered]);
   const incomeBreakdown = useMemo(() => getCategoryBreakdown(filtered, "income"), [filtered]);
   const chartData = useMemo(() => getChartDataForPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
-  
+
   // Enriquecer chartData con dayLabel/weekLabel
   const chartDataEnriched = useMemo(() => {
     return chartData.map((item, index) => {
@@ -96,7 +96,7 @@ export default function AnalyticsScreen() {
       return item;
     });
   }, [chartData, period]);
-  
+
   const parsedFilteredMeta = useMemo(
     () =>
       filtered.map((transaction) => {
@@ -584,7 +584,7 @@ export default function AnalyticsScreen() {
               {primaryChartMode === "bars" ? (
                 <BarChart data={primaryChartData} isDark={isDark} currencyCode={currency} onTouchActiveChange={setIsChartTouchActive} />
               ) : (
-               <MixedAreaChart
+                <MixedAreaChart
                   labels={primaryChartLabels}
                   series={[
                     {

@@ -6,8 +6,8 @@ import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Sty
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from "@/constants/category-presets";
 import { CategoryIcon } from "@/components/category-icon";
+import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from "@/constants/category-presets";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";

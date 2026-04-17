@@ -354,7 +354,19 @@ function RecurringContributionItem({
   );
 }
 
-function TransactionItem({ transaction, goal, cardBg, isFirst, userProfile }: { transaction: Transaction; goal: SavingsGoal; cardBg: string; isFirst: boolean; userProfile: UserProfile | null }) {
+function TransactionItem({
+  transaction,
+  goal,
+  cardBg,
+  isFirst,
+  userProfile,
+}: {
+  transaction: Transaction;
+  goal: SavingsGoal;
+  cardBg: string;
+  isFirst: boolean;
+  userProfile: UserProfile | null;
+}) {
   const isAdd = transaction.type === "income";
 
   return (
