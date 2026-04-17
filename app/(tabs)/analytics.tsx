@@ -85,6 +85,18 @@ export default function AnalyticsScreen() {
   const expenseBreakdown = useMemo(() => getCategoryBreakdown(filtered, "expense"), [filtered]);
   const incomeBreakdown = useMemo(() => getCategoryBreakdown(filtered, "income"), [filtered]);
   const chartData = useMemo(() => getChartDataForPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
+  
+  // Enriquecer chartData con dayLabel/weekLabel
+  const chartDataEnriched = useMemo(() => {
+    return chartData.map((item, index) => {
+      if (period === "month") {
+        // En modo mes, mostrar "Semana X"
+        return { ...item, dayLabel: `Semana ${index + 1}` };
+      }
+      return item;
+    });
+  }, [chartData, period]);
+  
   const parsedFilteredMeta = useMemo(
     () =>
       filtered.map((transaction) => {
@@ -122,12 +134,22 @@ export default function AnalyticsScreen() {
       const totals = dailyTotals.get(dayStr) ?? { income: 0, expense: 0 };
       return {
         label: `${i + 1}`,
+        dayLabel: `Día ${i + 1}`,
         income: totals.income,
         expense: totals.expense,
       };
     });
   }, [chartData, period, referenceDate, transactions]);
-  const primaryChartData = period === "month" && monthXAxisMode === "days" ? chartDataDailyMonth : chartData;
+  const primaryChartData = period === "month" && monthXAxisMode === "days" ? chartDataDailyMonth : chartDataEnriched;
+  const isMonthDaysMode = period === "month" && monthXAxisMode === "days";
+  const primaryChartLabels = useMemo(() => {
+    return primaryChartData.map((d) => {
+      if (isMonthDaysMode) {
+        return `Día ${d.label}`;
+      }
+      return d.label;
+    });
+  }, [primaryChartData, isMonthDaysMode]);
   const categoriesById = useMemo(() => new Map<string, Category>(allCategories.map((category) => [category.id, category])), [allCategories]);
   const primarySeriesHasData = useMemo(() => {
     const length = primaryChartData.length;
@@ -181,18 +203,24 @@ export default function AnalyticsScreen() {
   const hasPrimaryRecords = useMemo(() => primarySeriesHasData.income.some(Boolean) || primarySeriesHasData.expense.some(Boolean), [primarySeriesHasData]);
   const expenseSegments: DonutSegment[] = expenseBreakdown.map((d) => ({
     value: d.amount,
-    color: categoriesById.get(d.category)?.color ?? "#94A3B8",
+    color: categoriesById.get(d.category)?.color ?? colors.muted,
     label: categoriesById.get(d.category)?.name ?? d.category,
   }));
 
   const incomeSegments: DonutSegment[] = incomeBreakdown.map((d) => ({
     value: d.amount,
-    color: categoriesById.get(d.category)?.color ?? "#94A3B8",
+    color: categoriesById.get(d.category)?.color ?? colors.muted,
     label: categoriesById.get(d.category)?.name ?? d.category,
   }));
 
-  const mixedChartData = period === "month" && mixedMonthXAxisMode === "days" ? chartDataDailyMonth : chartData;
-  const mixedChartLabels = mixedChartData.map((d) => d.label);
+  const mixedChartData = period === "month" && mixedMonthXAxisMode === "days" ? chartDataDailyMonth : chartDataEnriched;
+  const isMixedMonthDaysMode = period === "month" && mixedMonthXAxisMode === "days";
+  const mixedChartLabels = mixedChartData.map((d) => {
+    if (isMixedMonthDaysMode) {
+      return `Día ${d.label}`;
+    }
+    return d.label;
+  });
   const mixedSeries = useMemo<MixedSeries[]>(() => {
     const source = mixedMode === "expense-categories" ? expenseBreakdown : incomeBreakdown;
     const type = mixedMode === "expense-categories" ? "expense" : "income";
@@ -228,7 +256,7 @@ export default function AnalyticsScreen() {
     }));
   }, [mixedChartLabels, mixedMode, expenseBreakdown, incomeBreakdown, categoriesById, parsedFilteredMeta, period, mixedMonthXAxisMode]);
 
-  const cardBg = "#1E293B";
+  const cardBg = colors.card;
   const currency = userProfile?.currencyCode;
   const periodIndex = PERIODS.findIndex(({ key }) => key === period);
   const periodLabel = PERIODS.find(({ key }) => key === period)?.label ?? "Mes";
@@ -347,17 +375,17 @@ export default function AnalyticsScreen() {
   }, [closeSelectors, isPeriodDropdownOpen]);
 
   return (
-    <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         scrollEnabled={!isChartTouchActive}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       >
         {/* ── Header ── */}
-        <View className="px-5 pt-4 pb-3">
+        <View className="px-5 pt-3 pb-2.5">
           <View className="flex-row items-start justify-between">
             <View>
               <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Análisis</Text>
@@ -529,7 +557,7 @@ export default function AnalyticsScreen() {
                 className="px-3 py-1.5 rounded-lg"
                 style={{ backgroundColor: primaryChartMode === "bars" ? PRIMARY : colors.border }}
               >
-                <Text className="text-xs font-semibold" style={{ color: primaryChartMode === "bars" ? "#000" : colors.text }}>
+                <Text className="text-xs font-semibold" style={{ color: primaryChartMode === "bars" ? "#fff" : colors.text }}>
                   Barras
                 </Text>
               </Pressable>
@@ -539,7 +567,7 @@ export default function AnalyticsScreen() {
                 className="px-3 py-1.5 rounded-lg"
                 style={{ backgroundColor: primaryChartMode === "lines" ? PRIMARY : colors.border }}
               >
-                <Text className="text-xs font-semibold" style={{ color: primaryChartMode === "lines" ? "#000" : colors.text }}>
+                <Text className="text-xs font-semibold" style={{ color: primaryChartMode === "lines" ? "#fff" : colors.text }}>
                   Líneas
                 </Text>
               </Pressable>
@@ -556,8 +584,8 @@ export default function AnalyticsScreen() {
               {primaryChartMode === "bars" ? (
                 <BarChart data={primaryChartData} isDark={isDark} currencyCode={currency} onTouchActiveChange={setIsChartTouchActive} />
               ) : (
-                <MixedAreaChart
-                  labels={primaryChartData.map((d) => d.label)}
+               <MixedAreaChart
+                  labels={primaryChartLabels}
                   series={[
                     {
                       key: "income",
@@ -585,6 +613,19 @@ export default function AnalyticsScreen() {
             </Animated.View>
           )}
         </View>
+
+        {/* ── Unified Breakdown Charts ── */}
+        <BreakdownChart
+          incomeSegments={incomeSegments}
+          incomeBreakdown={incomeBreakdown}
+          expenseSegments={expenseSegments}
+          expenseBreakdown={expenseBreakdown}
+          totalIncome={income}
+          totalExpense={expense}
+          categoriesById={categoriesById}
+          currency={currency}
+          cardBg={cardBg}
+        />
 
         {/* ── Mixed area chart (extra) ── */}
         <View className="mx-5 mb-5 rounded-2xl px-4 py-4" style={[styles.card, { backgroundColor: cardBg }]}>
@@ -620,7 +661,7 @@ export default function AnalyticsScreen() {
                   className="px-3 py-1.5 rounded-lg"
                   style={{ backgroundColor: mixedMode === mode.key ? PRIMARY : colors.border }}
                 >
-                  <Text className="text-xs font-semibold" style={{ color: mixedMode === mode.key ? "#000" : colors.text }}>
+                  <Text className="text-xs font-semibold" style={{ color: mixedMode === mode.key ? "#fff" : colors.text }}>
                     {mode.key === "expense-categories" ? "Gastos" : "Ingresos"}
                   </Text>
                 </Pressable>
@@ -640,19 +681,6 @@ export default function AnalyticsScreen() {
             </Animated.View>
           )}
         </View>
-
-        {/* ── Unified Breakdown Charts ── */}
-        <BreakdownChart
-          incomeSegments={incomeSegments}
-          incomeBreakdown={incomeBreakdown}
-          expenseSegments={expenseSegments}
-          expenseBreakdown={expenseBreakdown}
-          totalIncome={income}
-          totalExpense={expense}
-          categoriesById={categoriesById}
-          currency={currency}
-          cardBg={cardBg}
-        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -968,8 +996,8 @@ function MixedAreaChart({
           const tickVal = yMax * r;
           return (
             <G key={`grid-${r}`}>
-              <Line x1={leftPad} x2={width - rightPad} y1={y} y2={y} stroke="#334155" strokeDasharray={r === 0 ? "" : "3,3"} strokeWidth={1} />
-              <SvgText fill="#94A3B8" fontSize="9" x={leftPad - 6} y={y + 3.5} textAnchor="end">
+              <Line x1={leftPad} x2={width - rightPad} y1={y} y2={y} stroke="#232833" strokeDasharray={r === 0 ? "" : "3,3"} strokeWidth={1} />
+              <SvgText fill="#8E98AA" fontSize="9" x={leftPad - 6} y={y + 3.5} textAnchor="end">
                 {formatCurrencyShort(tickVal, currency)}
               </SvgText>
             </G>
@@ -982,19 +1010,21 @@ function MixedAreaChart({
         {isStraightLineChart &&
           visibleSeries.map((s) => pointsForSeries(s).map((point, i) => <Circle key={`pt-${s.key}-${i}`} cx={point.x} cy={point.y} r={1.6} fill={s.color} opacity={0.95} />))}
         {labels.map((label, i) => {
+          const shouldShowLabel = labels.length > 12 ? i % 5 === 0 || i === labels.length - 1 : true;
+          if (!shouldShowLabel) return null;
           const x = leftPad + i * xStep;
           const y = height - 12;
           return (
-            <SvgText key={`x-${label}-${i}`} fill="#94A3B8" fontSize="9" x={x} y={y} textAnchor="middle" transform={verticalXLabels ? `rotate(-90 ${x} ${y})` : undefined}>
+            <SvgText key={`x-${label}-${i}`} fill="#8E98AA" fontSize="9" x={x} y={y} textAnchor="middle" transform={verticalXLabels ? `rotate(-90 ${x} ${y})` : undefined}>
               {label}
             </SvgText>
           );
         })}
-        {touchState.active && <Line x1={touchState.x} x2={touchState.x} y1={topPad} y2={topPad + chartH} stroke="#64748B" strokeDasharray="3,3" strokeWidth={1.2} />}
+        {touchState.active && <Line x1={touchState.x} x2={touchState.x} y1={topPad} y2={topPad + chartH} stroke="#667085" strokeDasharray="3,3" strokeWidth={1.2} />}
       </Svg>
 
       {touchState.active && touchRows.length > 0 && (
-        <View className="mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(15,23,42,0.9)" }}>
+        <View className="mt-2 rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(8,10,14,0.94)" }}>
           <Text className="text-[11px] font-semibold text-white mb-1">{labels[touchState.index]}</Text>
           {touchRows.map((row) => (
             <View key={`tip-${row.key}`} className="flex-row items-center justify-between">
@@ -1017,7 +1047,7 @@ function MixedAreaChart({
               key={`legend-${s.key}`}
               onPress={() => setSelectedSeriesKey((prev) => (prev === s.key ? null : s.key))}
               className="flex-row items-center rounded-xl px-2.5 py-2"
-              style={{ backgroundColor: isSelected ? "rgba(148,163,184,0.16)" : "rgba(148,163,184,0.08)" }}
+              style={{ backgroundColor: isSelected ? "rgba(93,168,255,0.18)" : "rgba(93,168,255,0.1)" }}
             >
               <View className="w-2.5 h-2.5 rounded-full mr-2.5" style={{ backgroundColor: s.color }} />
               <Text className="flex-1 text-[12px] font-medium text-slate-700 dark:text-slate-200" numberOfLines={1}>
@@ -1035,7 +1065,7 @@ function MixedAreaChart({
 function EmptyChartState({ text }: { text: string }) {
   return (
     <View className="items-center py-8">
-      <Ionicons name="bar-chart-outline" size={40} color="#CBD5E1" />
+      <Ionicons name="bar-chart-outline" size={40} color="#8E98AA" />
       <Text className="text-xs text-slate-400 mt-2 text-center">{text}</Text>
     </View>
   );

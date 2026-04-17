@@ -76,10 +76,10 @@ export default function ProfileScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* ── Header ── */}
-        <LinearGradient colors={["#F97316", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <LinearGradient colors={["#182236", "#0A0E18"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <View style={styles.circle1} />
           <View style={styles.circle2} />
           <Animated.View entering={FadeInDown.duration(400).delay(0)} style={styles.profileWrap}>
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
             <Text style={styles.displayName}>{user?.displayName ?? "Usuario"}</Text>
             <Text style={styles.email}>{user?.email}</Text>
             <Pressable onPress={() => router.push("/edit-profile")} style={styles.editBadge}>
-              <Ionicons name="pencil" size={12} color="#fff" />
+              <Ionicons name="create-outline" size={12} color="#fff" />
               <Text style={styles.editBadgeText}>Editar perfil</Text>
             </Pressable>
           </Animated.View>
@@ -362,9 +362,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "rgba(239,68,68,0.15)",
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: "rgba(239,68,68,0.35)",
   },
   signOutText: { color: "#EF4444", fontWeight: "700", fontSize: 15 },
 });

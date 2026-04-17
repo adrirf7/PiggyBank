@@ -248,13 +248,13 @@ export default function TransactionsScreen() {
   }, [highlightedTransactionId]);
 
   return (
-    <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ── Header ── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(0)} className="px-5 pt-4 pb-3">
+      <Animated.View entering={FadeInDown.duration(400).delay(0)} className="px-5 pt-3 pb-2">
         <View className="flex-row items-center justify-between mb-1">
           <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Movimientos</Text>
           {selectionMode && (
-            <Pressable onPress={exitSelectionMode} className="px-3 py-1.5 rounded-full" style={{ backgroundColor: "#334155" }}>
+            <Pressable onPress={exitSelectionMode} className="px-3 py-1.5 rounded-full" style={{ backgroundColor: colors.border }}>
               <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">Cancelar</Text>
             </Pressable>
           )}
@@ -267,9 +267,9 @@ export default function TransactionsScreen() {
       </Animated.View>
 
       {/* ── Summary strip ── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(60)} className="flex-row mx-5 mb-4 gap-x-3">
+      <Animated.View entering={FadeInDown.duration(400).delay(60)} className="flex-row mx-5 mb-3 gap-x-2.5">
         <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: INCOME_COLOR + "18" }}>
-          <Ionicons name="arrow-down-circle" size={18} color={INCOME_COLOR} />
+          <Ionicons name="trending-up" size={18} color={INCOME_COLOR} />
           <View>
             <Text className="text-xs" style={{ color: INCOME_COLOR + "AA" }}>
               Total ingresos
@@ -280,7 +280,7 @@ export default function TransactionsScreen() {
           </View>
         </View>
         <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5 gap-x-2" style={{ backgroundColor: EXPENSE_COLOR + "18" }}>
-          <Ionicons name="arrow-up-circle" size={18} color={EXPENSE_COLOR} />
+          <Ionicons name="trending-down" size={18} color={EXPENSE_COLOR} />
           <View>
             <Text className="text-xs" style={{ color: EXPENSE_COLOR + "AA" }}>
               Total gastos
@@ -295,8 +295,8 @@ export default function TransactionsScreen() {
       {/* ── Search ── */}
       <Animated.View
         entering={FadeInDown.duration(400).delay(100)}
-        className="mx-5 mb-3 flex-row items-center rounded-xl px-3"
-        style={[styles.searchBox, { backgroundColor: "#1E293B" }]}
+        className="mx-5 mb-2.5 flex-row items-center rounded-xl px-3"
+        style={[styles.searchBox, { backgroundColor: colors.card }]}
       >
         <Ionicons name="search-outline" size={18} color={colors.muted} />
         <TextInput
@@ -315,7 +315,7 @@ export default function TransactionsScreen() {
       </Animated.View>
 
       {/* ── Filter chips ── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(140)} className="flex-row flex-wrap mx-5 mb-4 gap-2">
+      <Animated.View entering={FadeInDown.duration(400).delay(140)} className="flex-row flex-wrap mx-5 mb-3 gap-2">
         {FILTERS.map(({ key, label }) => {
           const active = filter === key;
           return (
@@ -374,7 +374,7 @@ export default function TransactionsScreen() {
             updateCellsBatchingPeriod={50}
             removeClippedSubviews
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
             onScrollToIndexFailed={(info) => {
               const fallbackOffset = Math.max(0, info.averageItemLength * info.index);
               listRef.current?.scrollToOffset({ offset: fallbackOffset, animated: true });
@@ -386,7 +386,7 @@ export default function TransactionsScreen() {
                 });
               }, 180);
             }}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
             renderItem={renderTransaction}
           />
         </Animated.View>
@@ -397,7 +397,7 @@ export default function TransactionsScreen() {
         <Animated.View entering={FadeInDown.duration(400).delay(220)}>
           <Pressable
             className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
-            style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : "#334155" }]}
+            style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : colors.border }]}
             disabled={selectedIds.length === 0}
             onPress={handleDeleteSelected}
           >
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   fab: {
-    shadowColor: "#F97316",
+    shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

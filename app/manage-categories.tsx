@@ -7,6 +7,7 @@ import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOut
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from "@/constants/category-presets";
+import { CategoryIcon } from "@/components/category-icon";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
@@ -250,40 +251,44 @@ export default function ManageCategoriesScreen() {
             <Text className="text-xs text-slate-500 dark:text-slate-400">Pulsa una categoría para editarla. Mantén pulsado para seleccionar y borrar varias.</Text>
           </View>
 
-          <View
-            className="relative flex-row mx-5 mb-4 rounded-2xl p-1"
-            style={{ backgroundColor: colors.buttonSecondary }}
-            onLayout={(event) => setTypeSelectorWidth(event.nativeEvent.layout.width)}
-          >
-            {selectorPillWidth > 0 && (
-              <Animated.View
-                pointerEvents="none"
-                className="absolute top-1 bottom-1 rounded-xl"
-                style={[
-                  {
-                    left: 4,
-                    width: selectorPillWidth,
-                  },
-                  indicatorStyle,
-                ]}
-              />
-            )}
-            {FILTERS.map(({ key, label }) => (
-              <Pressable key={key} className="flex-1 py-3 items-center rounded-2xl" onPress={() => handleSelectType(key)}>
-                <Text className="text-sm font-semibold" style={{ color: activeType === key ? "#fff" : colors.muted }}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {!isEditing && (
+            <View
+              className="relative flex-row mx-5 mb-4 rounded-2xl p-1"
+              style={{ backgroundColor: colors.buttonSecondary }}
+              onLayout={(event) => setTypeSelectorWidth(event.nativeEvent.layout.width)}
+            >
+              {selectorPillWidth > 0 && (
+                <Animated.View
+                  pointerEvents="none"
+                  className="absolute top-1 bottom-1 rounded-xl"
+                  style={[
+                    {
+                      left: 4,
+                      width: selectorPillWidth,
+                    },
+                    indicatorStyle,
+                  ]}
+                />
+              )}
+              {FILTERS.map(({ key, label }) => (
+                <Pressable key={key} className="flex-1 py-3 items-center rounded-2xl" onPress={() => handleSelectType(key)}>
+                  <Text className="text-sm font-semibold" style={{ color: activeType === key ? "#fff" : colors.muted }}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           <Animated.View key={activeType} entering={contentEnteringAnimation} exiting={contentExitingAnimation}>
-            <View className="mx-5 mb-3">
-              <Pressable className="rounded-2xl py-3.5 px-4 flex-row items-center justify-center gap-x-2" style={{ backgroundColor: activeColor }} onPress={openCreateEditor}>
-                <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                <Text className="text-sm font-semibold text-white">Crear categoría</Text>
-              </Pressable>
-            </View>
+            {!isEditing && (
+              <View className="mx-5 mb-3">
+                <Pressable className="rounded-2xl py-3.5 px-4 flex-row items-center justify-center gap-x-2" style={{ backgroundColor: activeColor }} onPress={openCreateEditor}>
+                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  <Text className="text-sm font-semibold text-white">Crear categoría</Text>
+                </Pressable>
+              </View>
+            )}
 
             {showEditor && (
               <Animated.View
@@ -321,7 +326,7 @@ export default function ManageCategoriesScreen() {
                       }}
                       onPress={() => setEditor((current) => ({ ...current, icon }))}
                     >
-                      <Ionicons name={icon as any} size={20} color={editor.icon === icon ? editor.color : colors.muted} />
+                      <CategoryIcon icon={icon} size={20} color={editor.icon === icon ? editor.color : colors.muted} />
                     </Pressable>
                   ))}
                 </View>
@@ -344,7 +349,7 @@ export default function ManageCategoriesScreen() {
 
                 <View className="flex-row items-center rounded-xl px-3 py-3" style={{ backgroundColor: colors.buttonSecondary }}>
                   <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: editor.color + "20" }}>
-                    <Ionicons name={editor.icon as any} size={20} color={editor.color} />
+                    <CategoryIcon icon={editor.icon} size={20} color={editor.color} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100" numberOfLines={1}>
@@ -411,7 +416,7 @@ export default function ManageCategoriesScreen() {
                       onLongPress={() => enterSelectionMode(category.id)}
                     >
                       <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: category.color + "20" }}>
-                        <Ionicons name={category.icon as any} size={20} color={category.color} />
+                        <CategoryIcon icon={category.icon} size={20} color={category.color} />
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100">{category.name}</Text>

@@ -3,15 +3,30 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import "../global.css";
 
 import { AlertDialogProvider } from "@/components/alert-dialog";
+import { Colors, PRIMARY } from "@/constants/theme";
 import { AuthProvider, useAuth } from "@/context/auth";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export const unstable_settings = {
   anchor: "(tabs)",
+};
+
+const navigationTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: Colors.dark.background,
+    card: Colors.dark.card,
+    border: Colors.dark.border,
+    text: Colors.dark.text,
+    primary: PRIMARY,
+    notification: PRIMARY,
+  },
 };
 
 function AuthGate() {
@@ -36,8 +51,8 @@ function RootNavigator() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <View className="dark flex-1">
-      <ThemeProvider value={DarkTheme}>
+    <GestureHandlerRootView className="dark flex-1">
+      <ThemeProvider value={navigationTheme}>
         <AlertDialogProvider>
           <AuthGate />
           <Stack screenOptions={{ animation: reducedMotion ? "none" : "fade_from_bottom" }}>
@@ -51,10 +66,10 @@ function RootNavigator() {
             <Stack.Screen name="manage-goal" options={{ headerShown: false, animation: reducedMotion ? "none" : "fade_from_bottom" }} />
             <Stack.Screen name="add-goal-contribution" options={{ presentation: "modal", headerShown: false, animation: reducedMotion ? "none" : "slide_from_bottom" }} />
           </Stack>
-          <StatusBar style="auto" />
+          <StatusBar style="light" />
         </AlertDialogProvider>
       </ThemeProvider>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

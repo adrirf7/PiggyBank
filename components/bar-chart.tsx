@@ -7,6 +7,7 @@ export interface BarGroup {
   label: string;
   income: number;
   expense: number;
+  dayLabel?: string;
 }
 
 interface Props {
@@ -85,6 +86,7 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
       type: "income" | "expense";
       value: number;
       topY: number;
+      dayLabel?: string;
     };
   }>({ isActive: false, lineX: yAxisWidth, hoveredBar: null });
 
@@ -122,16 +124,17 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
         type: "income" | "expense";
         value: number;
         topY: number;
+        dayLabel?: string;
       } | null = null;
 
       for (const item of barsMeta) {
         if (item.income.height > 0 && clampedX >= item.income.x && clampedX <= item.income.x + item.income.width) {
-          hoveredBar = { type: "income", value: item.group.income, topY: item.income.y };
+          hoveredBar = { type: "income", value: item.group.income, topY: item.income.y, dayLabel: item.group.dayLabel };
           break;
         }
 
         if (item.expense.height > 0 && clampedX >= item.expense.x && clampedX <= item.expense.x + item.expense.width) {
-          hoveredBar = { type: "expense", value: item.group.expense, topY: item.expense.y };
+          hoveredBar = { type: "expense", value: item.group.expense, topY: item.expense.y, dayLabel: item.group.dayLabel };
           break;
         }
       }
@@ -151,11 +154,20 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
     const title = touchState.hoveredBar.type === "income" ? "Ingreso" : "Gasto";
     const amount = formatCurrency(touchState.hoveredBar.value, currencyCode);
     const text = `${title}: ${amount}`;
-    const tooltipWidth = Math.max(104, text.length * 6.4 + 14);
-    const tooltipHeight = 22;
+    
+    // Ancho fijo más reducido
+    const tooltipWidth = 110;
+    const tooltipHeight = touchState.hoveredBar.dayLabel ? 38 : 22;
     const x = Math.min(svgWidth - chartPaddingRight - tooltipWidth, Math.max(yAxisWidth, touchState.lineX - tooltipWidth / 2));
     const y = chartPaddingTop + 2;
-    return { text, x, y, width: tooltipWidth, height: tooltipHeight };
+    return { 
+      text, 
+      x, 
+      y, 
+      width: tooltipWidth, 
+      height: tooltipHeight, 
+      dayLabel: touchState.hoveredBar.dayLabel 
+    };
   }, [chartPaddingRight, chartPaddingTop, currencyCode, svgWidth, touchState, yAxisWidth]);
 
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -314,7 +326,8 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
         })}
 
         {/* Bars */}
-        {barsMeta.map((item) => {
+        {barsMeta.map((item, index) => {
+          const shouldShowLabel = data.length > 12 ? index % 5 === 0 || index === data.length - 1 : true;
           const labelY = height + bottomLabelHeight - 5;
           const labelX = item.groupX;
 
@@ -322,17 +335,19 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
             <G key={`${item.group.label}-${item.groupX}`}>
               <Rect x={item.income.x} y={item.income.y} width={item.income.width} height={item.income.height} rx={3} ry={3} fill={incomeColor} opacity={0.9} />
               <Rect x={item.expense.x} y={item.expense.y} width={item.expense.width} height={item.expense.height} rx={3} ry={3} fill={expenseColor} opacity={0.9} />
-              <SvgText
-                x={labelX}
-                y={labelY}
-                textAnchor="middle"
-                fontSize={10}
-                fill="#94A3B8"
-                fontWeight="500"
-                transform={verticalXLabels ? `rotate(-90 ${labelX} ${labelY})` : undefined}
-              >
-                {item.group.label}
-              </SvgText>
+              {shouldShowLabel && (
+                <SvgText
+                  x={labelX}
+                  y={labelY}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill="#94A3B8"
+                  fontWeight="500"
+                  transform={verticalXLabels ? `rotate(-90 ${labelX} ${labelY})` : undefined}
+                >
+                  {item.group.label}
+                </SvgText>
+              )}
             </G>
           );
         })}
@@ -341,7 +356,19 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
         {tooltip && (
           <G>
             <Rect x={tooltip.x} y={tooltip.y} width={tooltip.width} height={tooltip.height} rx={6} ry={6} fill="#0F172A" opacity={0.95} />
-            <SvgText x={tooltip.x + tooltip.width / 2} y={tooltip.y + 14.5} textAnchor="middle" fontSize={10} fill="#FFFFFF" fontWeight="600">
+            {tooltip.dayLabel && (
+              <SvgText x={tooltip.x + tooltip.width / 2} y={tooltip.y + 10} textAnchor="middle" fontSize={9} fill="#94A3B8">
+                {tooltip.dayLabel}
+              </SvgText>
+            )}
+            <SvgText 
+              x={tooltip.x + tooltip.width / 2} 
+              y={tooltip.dayLabel ? tooltip.y + 26 : tooltip.y + 14.5} 
+              textAnchor="middle" 
+              fontSize={10} 
+              fill="#FFFFFF" 
+              fontWeight="600"
+            >
               {tooltip.text}
             </SvgText>
           </G>

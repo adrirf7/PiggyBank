@@ -42,7 +42,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* ── Brand header ── */}
-          <LinearGradient colors={["#F97316", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+          <LinearGradient colors={["#182236", "#0A0E18"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
             <View style={styles.circle1} />
             <View style={styles.circle2} />
             <Animated.View entering={FadeInDown.duration(500)} style={styles.logoWrap}>
@@ -55,7 +55,7 @@ export default function LoginScreen() {
           </LinearGradient>
 
           {/* ── Form card ── */}
-          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.card, { backgroundColor: "#1E293B" }]}>
+          <Animated.View entering={FadeInDown.duration(500).delay(150)} style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>Iniciar sesión</Text>
             <Text style={[styles.subtitle, { color: colors.muted }]}>Bienvenido de nuevo 👋</Text>
 
@@ -168,12 +168,12 @@ function GoogleSignInSection({ setError, colors }: { setError: (msg: string) => 
   return (
     <>
       <View style={styles.dividerRow}>
-        <View style={[styles.dividerLine, { backgroundColor: "#334155" }]} />
+        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
         <Text style={[styles.dividerText, { color: colors.muted }]}>o continúa con</Text>
-        <View style={[styles.dividerLine, { backgroundColor: "#334155" }]} />
+        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
       </View>
       <Pressable
-        style={[styles.googleBtn, { backgroundColor: "#0F172A", borderColor: "#334155", opacity: isDisabled ? 0.6 : 1 }]}
+        style={[styles.googleBtn, { backgroundColor: colors.inputBackground, borderColor: colors.border, opacity: isDisabled ? 0.6 : 1 }]}
         onPress={handleGooglePress}
         disabled={isDisabled}
       >
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "rgba(239,68,68,0.15)",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 8,
-    shadowColor: "#F97316",
+    shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

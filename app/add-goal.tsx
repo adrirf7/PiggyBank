@@ -3,7 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -50,6 +50,18 @@ export default function AddGoalScreen() {
   const [selectedColor, setSelectedColor] = useState(existing?.color ?? PRIMARY);
   const [targetDate, setTargetDate] = useState<Date | null>(existing?.targetDate ? parseISO(existing.targetDate) : null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Sincronizar campos cuando se carga el objetivo existente
+  useEffect(() => {
+    if (existing) {
+      setName(existing.name);
+      setTargetAmount(existing.targetAmount.toString());
+      setCurrentAmount(existing.currentAmount.toString());
+      setSelectedIcon(existing.icon);
+      setSelectedColor(existing.color);
+      setTargetDate(existing.targetDate ? parseISO(existing.targetDate) : null);
+    }
+  }, [existing]);
 
   const handleSave = async () => {
     const target = parseFloat(targetAmount.replace(",", "."));

@@ -233,13 +233,13 @@ export default function DashboardScreen() {
     });
   };
 
-  const deleteButtonColor = selectedIds.length > 0 ? "#EF4444" : "#334155";
+  const deleteButtonColor = selectedIds.length > 0 ? "#EF4444" : colors.border;
 
   return (
-    <SafeAreaView className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* ── Header ── */}
-        <Animated.View entering={FadeInDown.duration(400)} className="flex-row items-center justify-between px-5 pt-4 pb-2">
+        <Animated.View entering={FadeInDown.duration(400)} className="flex-row items-center justify-between px-5 pt-3 pb-2">
           <View>
             <Text className="text-xs text-slate-400 dark:text-slate-500 capitalize">{todayCapitalized}</Text>
             <Text className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-0.5">
@@ -247,28 +247,28 @@ export default function DashboardScreen() {
               {firstName ? `, ${firstName}` : ""}
             </Text>
           </View>
-          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: "#F9731620" }} onPress={() => router.push("/add-transaction")}>
+          <Pressable className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: PRIMARY + "24" }} onPress={() => router.push("/add-transaction")}>
             <Ionicons name="add" size={22} color={PRIMARY} />
           </Pressable>
         </Animated.View>
 
         {/* ── Balance Card ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(60)} className="mx-5 mt-3">
-          <LinearGradient colors={["#d9f634", "#1d9a3f"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+        <Animated.View entering={FadeInDown.duration(400).delay(60)} className="mx-5 mt-2.5">
+          <LinearGradient colors={["#1A2234", "#0A0E18"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
             <View style={styles.circle1} />
             <View style={styles.circle2} />
             <Text style={styles.balanceLabel}>Saldo disponible</Text>
             <RollingNumber value={balance} style={styles.balanceAmount} currencyCode={userProfile?.currencyCode} hasData={transactions.length > 0} />
             <View style={styles.balanceRow}>
               <View style={styles.balanceStat}>
-                <Ionicons name="arrow-down-circle" size={14} color="rgba(255,255,255,0.7)" />
+                <Ionicons name="trending-up" size={14} color="rgba(255,255,255,0.7)" />
                 <Text style={styles.balanceStatLabel}> Ingresos totales</Text>
               </View>
               <Text style={styles.balanceStatValue}>{formatCurrency(totalIncome, userProfile?.currencyCode)}</Text>
             </View>
             <View style={[styles.balanceRow, { marginTop: 6 }]}>
               <View style={styles.balanceStat}>
-                <Ionicons name="arrow-up-circle" size={14} color="rgba(255,255,255,0.7)" />
+                <Ionicons name="trending-down" size={14} color="rgba(255,255,255,0.7)" />
                 <Text style={styles.balanceStatLabel}> Gastos totales</Text>
               </View>
               <Text style={styles.balanceStatValue}>{formatCurrency(totalExpense, userProfile?.currencyCode)}</Text>
@@ -286,7 +286,8 @@ export default function DashboardScreen() {
         {/* ── Period selector ── */}
         <Animated.View
           entering={FadeInDown.duration(400).delay(120)}
-          className="relative flex-row mx-5 mt-5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1"
+          className="relative flex-row mx-5 mt-4 rounded-xl p-1"
+          style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
           onLayout={(event) => setPeriodSelectorWidth(event.nativeEvent.layout.width)}
         >
           {periodIndicatorWidth > 0 && (
@@ -312,18 +313,18 @@ export default function DashboardScreen() {
           ))}
         </Animated.View>
 
-        <View className="mx-5 mt-4 overflow-hidden">
+        <View className="mx-5 mt-3 overflow-hidden">
           <Animated.View key={period} entering={periodEnteringAnimation} exiting={periodExitingAnimation}>
             {/* ── Stats Cards ── */}
             <View className="flex-row gap-x-3">
               <Pressable
                 className="flex-1 rounded-2xl p-4 active:opacity-70"
-                style={[styles.card, { backgroundColor: "#1E293B" }]}
+                style={[styles.card, { backgroundColor: colors.card }]}
                 onPress={() => router.push("/transactions?filter=income")}
               >
                 <View className="flex-row items-center justify-between mb-3">
                   <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: INCOME_COLOR + "20" }}>
-                    <Ionicons name="arrow-down" size={18} color={INCOME_COLOR} />
+                    <Ionicons name="trending-up" size={18} color={INCOME_COLOR} />
                   </View>
                   <View className="rounded-2xl px-2.5 py-1.5" style={{ backgroundColor: incomeTrendColor + "16", borderWidth: 1, borderColor: incomeTrendColor + "35" }}>
                     <View className="flex-row items-center gap-1.5">
@@ -345,12 +346,12 @@ export default function DashboardScreen() {
 
               <Pressable
                 className="flex-1 rounded-2xl p-4 active:opacity-70"
-                style={[styles.card, { backgroundColor: "#1E293B" }]}
+                style={[styles.card, { backgroundColor: colors.card }]}
                 onPress={() => router.push("/transactions?filter=expense")}
               >
                 <View className="flex-row items-center justify-between mb-3">
                   <View className="w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: EXPENSE_COLOR + "20" }}>
-                    <Ionicons name="arrow-up" size={18} color={EXPENSE_COLOR} />
+                    <Ionicons name="trending-down" size={18} color={EXPENSE_COLOR} />
                   </View>
                   <View className="rounded-2xl px-2.5 py-1.5" style={{ backgroundColor: expenseTrendColor + "16", borderWidth: 1, borderColor: expenseTrendColor + "35" }}>
                     <View className="flex-row items-center gap-1.5">
@@ -374,7 +375,7 @@ export default function DashboardScreen() {
             {/* ── Period balance ── */}
             {(income > 0 || expense > 0) && (
               <Pressable onPress={() => router.push("/(tabs)/analytics")}>
-                <View className="mt-3 rounded-2xl px-4 py-3 flex-row justify-between items-center" style={[styles.card, { backgroundColor: "#1E293B" }]}>
+                <View className="mt-2.5 rounded-2xl px-4 py-3 flex-row justify-between items-center" style={[styles.card, { backgroundColor: colors.card }]}>
                   <View className="flex-row items-center">
                     <View className="w-8 h-8 rounded-full items-center justify-center mr-2" style={{ backgroundColor: (periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR) + "20" }}>
                       <Ionicons name={periodBalance >= 0 ? "trending-up" : "trending-down"} size={16} color={periodBalance >= 0 ? INCOME_COLOR : EXPENSE_COLOR} />
@@ -401,8 +402,8 @@ export default function DashboardScreen() {
         </View>
 
         {/* ── Goals Quick Access ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(300)} className="mx-5 mt-3">
-          <Pressable className="rounded-2xl p-4 flex-row items-center" style={[styles.card, { backgroundColor: "#1E293B" }]} onPress={() => router.push("/savings-goals")}>
+        <Animated.View entering={FadeInDown.duration(400).delay(300)} className="mx-5 mt-2.5">
+          <Pressable className="rounded-2xl p-4 flex-row items-center" style={[styles.card, { backgroundColor: colors.card }]} onPress={() => router.push("/savings-goals")}>
             <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: PRIMARY + "15" }}>
               <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
             </View>
@@ -416,7 +417,7 @@ export default function DashboardScreen() {
                     {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de{" "}
                     {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
                   </Text>
-                  <View className="h-1.5 rounded-full overflow-hidden mt-2" style={{ backgroundColor: "#334155" }}>
+                  <View className="h-1.5 rounded-full overflow-hidden mt-2" style={{ backgroundColor: colors.border }}>
                     <View className="h-full rounded-full" style={{ width: `${goalPercent}%`, backgroundColor: PRIMARY }} />
                   </View>
                 </>
@@ -427,7 +428,7 @@ export default function DashboardScreen() {
         </Animated.View>
 
         {/* ── Recent Transactions ── */}
-        <Animated.View entering={FadeInDown.duration(400).delay(360)} className="mt-6 mx-5">
+        <Animated.View entering={FadeInDown.duration(400).delay(360)} className="mt-4 mx-5">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-base font-bold text-slate-800 dark:text-slate-100">Recientes</Text>
             <View className="flex-row items-center gap-3">

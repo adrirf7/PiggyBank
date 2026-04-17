@@ -8,7 +8,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
-import { useAuth } from "@/context/auth";
+import { useAuth, type UserProfile } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
@@ -264,6 +264,7 @@ export default function ManageGoalScreen() {
                   isFirst={idx === 0}
                   onEdit={handleEditRecurringContribution}
                   onDelete={handleDeleteRecurringContribution}
+                  userProfile={userProfile}
                 />
               ))}
             </View>
@@ -286,7 +287,7 @@ export default function ManageGoalScreen() {
           ) : (
             <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: cardBg }}>
               {nonRecurringTransactions.map((tx, idx) => (
-                <TransactionItem key={tx.id} transaction={tx} goal={goal} cardBg={cardBg} isFirst={idx === 0} />
+                <TransactionItem key={tx.id} transaction={tx} goal={goal} cardBg={cardBg} isFirst={idx === 0} userProfile={userProfile} />
               ))}
             </View>
           )}
@@ -303,6 +304,7 @@ function RecurringContributionItem({
   isFirst,
   onEdit,
   onDelete,
+  userProfile,
 }: {
   transaction: Transaction;
   goal: SavingsGoal;
@@ -310,6 +312,7 @@ function RecurringContributionItem({
   isFirst: boolean;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
+  userProfile: UserProfile | null;
 }) {
   const isAdd = transaction.type === "income";
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
@@ -351,7 +354,7 @@ function RecurringContributionItem({
   );
 }
 
-function TransactionItem({ transaction, goal, cardBg, isFirst }: { transaction: Transaction; goal: SavingsGoal; cardBg: string; isFirst: boolean }) {
+function TransactionItem({ transaction, goal, cardBg, isFirst, userProfile }: { transaction: Transaction; goal: SavingsGoal; cardBg: string; isFirst: boolean; userProfile: UserProfile | null }) {
   const isAdd = transaction.type === "income";
 
   return (

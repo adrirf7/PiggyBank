@@ -1,100 +1,209 @@
+import { createNavigatorFactory, TabRouter, useNavigationBuilder } from "@react-navigation/core";
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, useRouter } from "expo-router";
-import React from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { withLayoutContext, useRouter } from "expo-router";
+import React, { useEffect } from "react";
+import { Dimensions, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
 
-export default function TabLayout() {
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SWIPEABLE = ["index", "transactions", "analytics", "profile"];
+
+const TAB_ITEMS = [
+  { name: "index", title: "Inicio", icon: "home-outline" as const, iconFocused: "home" as const, size: 21 },
+  { name: "transactions", title: "Movimientos", icon: "layers-outline" as const, iconFocused: "layers" as const, size: 21 },
+  { name: "analytics", title: "Análisis", icon: "stats-chart-outline" as const, iconFocused: "stats-chart" as const, size: 20 },
+  { name: "profile", title: "Perfil", icon: "person-outline" as const, iconFocused: "person" as const, size: 21 },
+];
+
+function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
   const router = useRouter();
-  const colors = Colors.dark;
   const insets = useSafeAreaInsets();
+  const colors = Colors.dark;
+
+  const { state, navigation, descriptors, NavigationContent } = useNavigationBuilder(
+    TabRouter as any,
+    { children, screenOptions, initialRouteName },
+  );
+
+  const swipeableRoutes = state.routes.filter((r) => SWIPEABLE.includes(r.name));
+  const currentRoute = state.routes[state.index];
+  const swipeableIndex = Math.max(0, swipeableRoutes.findIndex((r) => r.key === currentRoute?.key));
+
+  const translateX = useSharedValue(-swipeableIndex * SCREEN_WIDTH);
+  const activeIndex = useSharedValue(swipeableIndex);
+
+  useEffect(() => {
+    activeIndex.value = swipeableIndex;
+    translateX.value = withSpring(-swipeableIndex * SCREEN_WIDTH, { damping: 28, stiffness: 240, mass: 0.8 });
+  }, [swipeableIndex]);
+
+  const navigateTo = (idx: number) => {
+    const route = swipeableRoutes[idx];
+    if (route) navigation.navigate(route.name);
+  };
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-15, 15])
+    .onUpdate((e) => {
+      const base = -activeIndex.value * SCREEN_WIDTH;
+      const atStart = activeIndex.value === 0 && e.translationX > 0;
+      const atEnd = activeIndex.value === swipeableRoutes.length - 1 && e.translationX < 0;
+      const resistance = atStart || atEnd ? 0.25 : 1;
+      translateX.value = base + e.translationX * resistance;
+    })
+    .onEnd((e) => {
+      const threshold = SCREEN_WIDTH * 0.28;
+      const velocity = e.velocityX;
+      let next = activeIndex.value;
+
+      if ((e.translationX < -threshold || velocity < -600) && next < swipeableRoutes.length - 1) next += 1;
+      else if ((e.translationX > threshold || velocity > 600) && next > 0) next -= 1;
+
+      activeIndex.value = next;
+      translateX.value = withSpring(-next * SCREEN_WIDTH, { damping: 28, stiffness: 240, mass: 0.8 });
+
+      if (next !== swipeableIndex) runOnJS(navigateTo)(next);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  // Tab bar layout
+  const tabBarHeight = Platform.OS === "ios" ? 62 : 58;
+  const tabBarBottom = Platform.OS === "ios" ? Math.max(insets.bottom, 20) : 16;
+  const tabBarTotalHeight = tabBarHeight + (Platform.OS !== "ios" ? insets.bottom : 0);
+  const pillBottom = tabBarBottom + 20;
+
+  const handleTabPress = (tabIdx: number) => {
+    const route = swipeableRoutes[tabIdx];
+    if (!route) return;
+    const isFocused = swipeableIndex === tabIdx;
+    const event = (navigation as any).emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+    if (!isFocused && !event.defaultPrevented) (navigation as any).navigate(route.name);
+  };
+
+  const renderTab = (item: (typeof TAB_ITEMS)[number], tabIdx: number) => {
+    const isFocused = swipeableIndex === tabIdx;
+    const color = isFocused ? PRIMARY : "#3A3A3A";
+    return (
+      <TouchableOpacity key={item.name} style={styles.tabItem} onPress={() => handleTabPress(tabIdx)} activeOpacity={0.7}>
+        <Ionicons name={isFocused ? item.iconFocused : item.icon} size={item.size} color={color} />
+        <Text style={[styles.tabLabel, { color }]}>{item.title}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        lazy: true,
-        freezeOnBlur: true,
-        unmountOnBlur: false,
-        animation: "none",
-        sceneStyle: { backgroundColor: colors.background },
-        tabBarActiveTintColor: PRIMARY,
-        tabBarInactiveTintColor: colors.tabIconDefault,
-        tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopColor: colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === "ios" ? 84 : 64 + insets.bottom,
-          paddingBottom: Platform.OS === "ios" ? 24 : 8 + insets.bottom,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "500",
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Inicio",
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="transactions"
-        options={{
-          title: "Movimientos",
-          tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="add-button"
-        options={{
-          title: "",
-          tabBarButton: () => (
-            <Pressable onPress={() => router.push("/add-transaction")} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <View style={styles.addButton}>
-                <Ionicons name="add" size={30} color="#fff" />
+    <NavigationContent>
+      <View style={{ flex: 1, backgroundColor: colors.background, overflow: "hidden" }}>
+        {/* Pager */}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={[{ flex: 1, flexDirection: "row", width: SCREEN_WIDTH * swipeableRoutes.length }, animatedStyle]}>
+            {swipeableRoutes.map((route) => (
+              <View key={route.key} style={{ width: SCREEN_WIDTH, flex: 1, overflow: "hidden" }}>
+                {descriptors[route.key].render()}
               </View>
-            </Pressable>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: "Análisis",
-          tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen name="explore" options={{ href: null }} />
-    </Tabs>
+            ))}
+          </Animated.View>
+        </GestureDetector>
+
+        {/* Gradient */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.92)"]}
+          pointerEvents="none"
+          style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, zIndex: 5 }}
+        />
+
+        {/* Pill tab bar */}
+        <View
+          style={[
+            styles.pill,
+            { bottom: pillBottom, height: tabBarTotalHeight, paddingBottom: Platform.OS === "ios" ? 10 : 6 + insets.bottom },
+          ]}
+        >
+          {TAB_ITEMS.slice(0, 2).map((item, i) => renderTab(item, i))}
+
+          <Pressable onPress={() => router.push("/add-transaction")} style={styles.addWrapper}>
+            <View style={styles.addButton}>
+              <Ionicons name="add" size={26} color="#FFFFFF" />
+            </View>
+          </Pressable>
+
+          {TAB_ITEMS.slice(2).map((item, i) => renderTab(item, i + 2))}
+        </View>
+      </View>
+    </NavigationContent>
+  );
+}
+
+const createSwipeTabNavigator = createNavigatorFactory(SwipeTabNavigator as any);
+const { Navigator, Screen } = createSwipeTabNavigator();
+const SwipeTabs = withLayoutContext<any, typeof Navigator, any, any>(Navigator);
+
+export default function TabLayout() {
+  return (
+    <SwipeTabs>
+      <SwipeTabs.Screen name="index" options={{ title: "Inicio" }} />
+      <SwipeTabs.Screen name="transactions" options={{ title: "Movimientos" }} />
+      <SwipeTabs.Screen name="analytics" options={{ title: "Análisis" }} />
+      <SwipeTabs.Screen name="profile" options={{ title: "Perfil" }} />
+      <SwipeTabs.Screen name="add-button" options={{ href: null } as any} />
+      <SwipeTabs.Screen name="explore" options={{ href: null } as any} />
+    </SwipeTabs>
   );
 }
 
 const styles = StyleSheet.create({
+  pill: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(5,5,5,0.97)",
+    borderRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 8,
+    elevation: 24,
+    zIndex: 10,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.6,
+    shadowRadius: 22,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+  },
+  addWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   addButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
-    shadowColor: PRIMARY,
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 10,
   },
 });

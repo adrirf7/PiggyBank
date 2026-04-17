@@ -1,7 +1,9 @@
+import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { Category, SavingsGoal, Transaction } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 import { Ionicons } from "@expo/vector-icons";
+import { CategoryIcon } from "@/components/category-icon";
 import React, { useEffect, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, { FadeInRight, SlideOutLeft, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
@@ -49,6 +51,7 @@ function TransactionItem({
   categoriesById,
 }: Props) {
   const { userProfile } = useAuth();
+  const colors = Colors.dark;
   const isIncome = transaction.type === "income";
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
   const shakeRotation = useSharedValue(0);
@@ -92,10 +95,11 @@ function TransactionItem({
   return (
     <Animated.View entering={animated ? FadeInRight.duration(300) : undefined} exiting={animated ? SlideOutLeft.duration(250) : undefined} style={shakeStyle}>
       <Pressable
-        className="flex-row items-center px-4 py-3.5 bg-white dark:bg-slate-800 rounded-2xl mb-2.5 active:opacity-70"
+        className="flex-row items-center px-4 py-3 rounded-2xl mb-2 active:opacity-70"
         style={{
+          backgroundColor: colors.card,
           borderWidth: selectable ? 1.5 : 0,
-          borderColor: selected ? "#EF4444" : "#334155",
+          borderColor: selected ? "#EF4444" : colors.border,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0,
@@ -107,15 +111,17 @@ function TransactionItem({
       >
         {/* Category icon bubble */}
         <View className="w-11 h-11 rounded-full items-center justify-center mr-3" style={{ backgroundColor: displayColor + "20" }}>
-          <Ionicons name={displayIcon as any} size={22} color={displayColor} />
+          <CategoryIcon icon={displayIcon} size={22} color={displayColor} />
         </View>
 
         {/* Details */}
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100" numberOfLines={1}>
+          <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>
             {transaction.description || displayName || "Sin descripción"}
           </Text>
-          <Text className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{displayName}</Text>
+          <Text className="text-xs mt-0.5" style={{ color: colors.muted }}>
+            {displayName}
+          </Text>
           {!!recurrenceLabel && (
             <View className="self-start mt-1 px-2 py-0.5 rounded-full flex-row items-center" style={{ backgroundColor: (isIncome ? "#22C55E" : "#EF4444") + "20" }}>
               <Ionicons name="repeat-outline" size={11} color={isIncome ? "#22C55E" : "#EF4444"} />
@@ -133,7 +139,7 @@ function TransactionItem({
         </Text>
         {selectable && (
           <View className="ml-3">
-            <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={20} color={selected ? "#EF4444" : "#64748B"} />
+            <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={20} color={selected ? "#EF4444" : colors.tabIconDefault} />
           </View>
         )}
       </Pressable>

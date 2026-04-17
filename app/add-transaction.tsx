@@ -6,6 +6,7 @@ import { useTransactionStore } from "@/store/use-transactions";
 import { Category, RecurrenceType, TransactionType } from "@/types";
 import { getCurrencySymbol } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
+import { CategoryIcon } from "@/components/category-icon";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -496,7 +497,7 @@ function CategoryChip({ category, selected, onPress, colors }: { category: Categ
         borderColor: selected ? category.color : colors.border,
       }}
     >
-      <Ionicons name={category.icon as any} size={15} color={selected ? category.color : colors.muted} />
+      <CategoryIcon icon={category.icon} size={15} color={selected ? category.color : colors.muted} />
       <Text className="text-xs font-medium" style={{ color: selected ? category.color : colors.muted }}>
         {category.name}
       </Text>

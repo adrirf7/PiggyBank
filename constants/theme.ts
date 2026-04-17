@@ -1,29 +1,26 @@
-/**
- * App colors - Dark mode only
- */
-
 import { Platform } from "react-native";
 
-export const PRIMARY = "#c9e259";
+export const PRIMARY = "#5DA8FF";
 export const INCOME_COLOR = "#22C55E";
 export const EXPENSE_COLOR = "#EF4444";
 
 export const Colors = {
   dark: {
-    text: "#F1F5F9",
-    background: "#0F172A",
-    card: "#1E293B",
-    border: "#334155",
-    muted: "#94A3B8",
+    text: "#FFFFFF",
+    background: "#000000",
+    card: "#111111",
+    cardElevated: "#1A1A1A",
+    border: "#1E1E1E",
+    muted: "#606060",
     tint: PRIMARY,
-    icon: "#94A3B8",
-    tabIconDefault: "#64748B",
+    icon: "#606060",
+    tabIconDefault: "#424242",
     tabIconSelected: PRIMARY,
-    tabBar: "#1E293B",
-    inputBackground: "#0F172A",
-    inputBorder: "#334155",
-    buttonSecondary: "#334155",
-    buttonSecondaryText: "#F1F5F9",
+    tabBar: "rgba(5,5,5,0.97)",
+    inputBackground: "#111111",
+    inputBorder: "#1E1E1E",
+    buttonSecondary: "#161616",
+    buttonSecondaryText: "#FFFFFF",
   },
 };
 
