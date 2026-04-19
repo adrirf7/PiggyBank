@@ -2,7 +2,7 @@ import { useAccount } from "@/context/account";
 import { useAuth } from "@/context/auth";
 import { db } from "@/lib/firebase";
 import { SavingsGoal } from "@/types";
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 
 export function useSavingsGoalStore() {
@@ -36,9 +36,19 @@ export function useSavingsGoalStore() {
   }, [user?.uid, user]);
 
   const goals = useMemo(() => {
-    if (!activeAccount) return allGoals;
-    const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
-    return allGoals.filter((goal) => (isDefault ? !goal.accountId || goal.accountId === activeAccount.id : goal.accountId === activeAccount.id));
+    const filtered = (() => {
+      if (!activeAccount) return allGoals;
+      const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
+      return allGoals.filter((goal) => (isDefault ? !goal.accountId || goal.accountId === activeAccount.id : goal.accountId === activeAccount.id));
+    })();
+
+    // Sort by explicit order if set, otherwise fall back to createdAt (newest first)
+    return [...filtered].sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+      if (a.order !== undefined) return -1;
+      if (b.order !== undefined) return 1;
+      return 0; // already sorted by createdAt desc from Firestore
+    });
   }, [allGoals, activeAccount, accounts]);
 
   const addGoal = async (data: Omit<SavingsGoal, "id">) => {
@@ -56,5 +66,14 @@ export function useSavingsGoalStore() {
     await deleteDoc(doc(db, "users", user.uid, "goals", id));
   };
 
-  return { goals, loading, addGoal, updateGoal, deleteGoal };
+  const reorderGoals = async (orderedGoals: SavingsGoal[]) => {
+    if (!user) return;
+    const batch = writeBatch(db);
+    orderedGoals.forEach((goal, idx) => {
+      batch.update(doc(db, "users", user.uid, "goals", goal.id), { order: idx });
+    });
+    await batch.commit();
+  };
+
+  return { goals, loading, addGoal, updateGoal, deleteGoal, reorderGoals };
 }

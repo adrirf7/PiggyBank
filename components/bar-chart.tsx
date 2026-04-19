@@ -1,6 +1,7 @@
 import { formatCurrency } from "@/utils/calculations";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NativeSyntheticEvent, NativeTouchEvent, Text, View } from "react-native";
+import { NativeSyntheticEvent, NativeTouchEvent, View } from "react-native";
+import { Text } from "@/components/text";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 export interface BarGroup {

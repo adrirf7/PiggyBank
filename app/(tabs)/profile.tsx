@@ -3,7 +3,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/text";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -76,10 +77,11 @@ export default function ProfileScreen() {
   );
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "transparent" }}>
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* ── Header ── */}
-        <LinearGradient colors={["#182236", "#0A0E18"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <LinearGradient colors={["#0D1828", "#060A14"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <View style={styles.circle1} />
           <View style={styles.circle2} />
           <Animated.View entering={FadeInDown.duration(400).delay(0)} style={styles.profileWrap}>
@@ -214,6 +216,7 @@ export default function ProfileScreen() {
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 

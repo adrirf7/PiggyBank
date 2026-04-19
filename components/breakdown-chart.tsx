@@ -3,7 +3,8 @@ import { Colors, PRIMARY } from "@/constants/theme";
 import { Category } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "@/components/text";
 
 interface BreakdownChartProps {
   incomeSegments: DonutSegment[];

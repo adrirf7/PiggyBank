@@ -1,7 +1,8 @@
 import { Colors } from "@/constants/theme";
 import { setAlertStateRef } from "@/lib/alert-manager";
 import React, { useState } from "react";
-import { Modal, Pressable, SafeAreaView, Text, View } from "react-native";
+import { Modal, Pressable, SafeAreaView, View } from "react-native";
+import { Text } from "@/components/text";
 
 export interface AlertButton {
   text: string;

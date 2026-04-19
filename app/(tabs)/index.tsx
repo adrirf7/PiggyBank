@@ -2,10 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/text";
 import Animated, {
   Easing,
   FadeInDown,
@@ -31,6 +31,7 @@ import { useTransactionStore } from "@/store/use-transactions";
 import { Transaction } from "@/types";
 import { compareTransactionsNewestFirst, formatCurrency } from "@/utils/calculations";
 
+
 export default function DashboardScreen() {
   const colors = Colors.dark;
   const router = useRouter();
@@ -52,13 +53,17 @@ export default function DashboardScreen() {
   const activeAccountTransactions = useMemo(() => {
     if (!activeAccount) return transactions;
     const isDefault = activeAccount.isDefault ?? accounts[0]?.id === activeAccount.id;
-    return transactions.filter((tx: Transaction) => (isDefault ? !tx.accountId || tx.accountId === activeAccount.id : tx.accountId === activeAccount.id));
+    return transactions.filter((tx: Transaction) =>
+      isDefault ? !tx.accountId || tx.accountId === activeAccount.id : tx.accountId === activeAccount.id,
+    );
   }, [transactions, activeAccount, accounts]);
 
   const cardData = useMemo(() => {
     return accounts.map((account, idx) => {
       const isDefault = account.isDefault ?? idx === 0;
-      const accountTxs = transactions.filter((tx: Transaction) => (isDefault ? !tx.accountId || tx.accountId === account.id : tx.accountId === account.id));
+      const accountTxs = transactions.filter((tx: Transaction) =>
+        isDefault ? !tx.accountId || tx.accountId === account.id : tx.accountId === account.id,
+      );
       const inc = { normal: 0, goal: 0 };
       const exp = { normal: 0, goal: 0 };
       for (const tx of accountTxs) {
@@ -76,23 +81,19 @@ export default function DashboardScreen() {
     });
   }, [accounts, transactions]);
 
-  const { totalGoalTarget, totalGoalCurrent, goalPercent } = useMemo(() => {
-    let target = 0;
-    let current = 0;
-    for (const goal of goals) {
-      target += goal.targetAmount;
-      current += goal.currentAmount;
-    }
-    return {
-      totalGoalTarget: target,
-      totalGoalCurrent: current,
-      goalPercent: target > 0 ? Math.min((current / target) * 100, 100) : 0,
-    };
+  const { topGoal, topGoalPercent } = useMemo(() => {
+    const g = goals[0] ?? null;
+    const pct = g && g.targetAmount > 0 ? Math.min((g.currentAmount / g.targetAmount) * 100, 100) : 0;
+    return { topGoal: g, topGoalPercent: pct };
   }, [goals]);
 
-  const recentTxs = useMemo(() => [...activeAccountTransactions].sort(compareTransactionsNewestFirst).slice(0, 7), [activeAccountTransactions]);
+  const recentTxs = useMemo(
+    () => [...activeAccountTransactions].sort(compareTransactionsNewestFirst).slice(0, 5),
+    [activeAccountTransactions],
+  );
   const goalById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
   const categoriesById = useMemo(() => new Map(allCategories.map((c) => [c.id, c])), [allCategories]);
+
   const selectedTransactions = useMemo(() => {
     if (selectedIds.length === 0) return [];
     const set = new Set(selectedIds);
@@ -122,9 +123,7 @@ export default function DashboardScreen() {
     }, []),
   );
 
-  useFocusEffect(
-    useCallback(() => () => clearSelection(), [clearSelection]),
-  );
+  useFocusEffect(useCallback(() => () => clearSelection(), [clearSelection]));
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -152,7 +151,8 @@ export default function DashboardScreen() {
 
   const handleDeleteSelected = () => {
     if (selectedTransactions.length === 0) return;
-    const label = selectedTransactions.length === 1 ? "1 transacción" : `${selectedTransactions.length} transacciones`;
+    const label =
+      selectedTransactions.length === 1 ? "1 transacción" : `${selectedTransactions.length} transacciones`;
     alert("Eliminar transacciones", `¿Seguro que quieres eliminar ${label}?`, [
       { text: "Cancelar", style: "cancel" },
       {
@@ -173,40 +173,31 @@ export default function DashboardScreen() {
     });
   };
 
-  // ── Icon pulse: all three action icons breathe slowly in sync ─────────────
+  // ── Icon pulse animation ──────────────────────────────────────────────────────
   const iconPulse = useSharedValue(1);
   useEffect(() => {
     iconPulse.value = withDelay(
       800,
       withRepeat(
         withSequence(
-          withTiming(1.12, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
-          withTiming(1.0, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.10, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
         ),
         -1,
         false,
       ),
     );
   }, [iconPulse]);
+  const iconPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconPulse.value }] }));
 
-  const iconPulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: iconPulse.value }],
-  }));
-
-  // ── Goal bar: fills from 0% to actual percent with a spring feel ──────────
+  // ── Goal bar fill animation ───────────────────────────────────────────────────
   const goalBarSv = useSharedValue(0);
   useEffect(() => {
-    goalBarSv.value = withDelay(
-      500,
-      withTiming(goalPercent, { duration: 1400, easing: Easing.out(Easing.cubic) }),
-    );
-  }, [goalPercent, goalBarSv]);
+    goalBarSv.value = withDelay(500, withTiming(topGoalPercent, { duration: 1400, easing: Easing.out(Easing.cubic) }));
+  }, [topGoalPercent, goalBarSv]);
+  const goalBarStyle = useAnimatedStyle(() => ({ width: `${goalBarSv.value}%` }));
 
-  const goalBarStyle = useAnimatedStyle(() => ({
-    width: `${goalBarSv.value}%`,
-  }));
-
-  // ── Header avatar: tiny wiggle on mount ───────────────────────────────────
+  // ── Avatar wiggle on mount ────────────────────────────────────────────────────
   const avatarWiggle = useSharedValue(0);
   useEffect(() => {
     avatarWiggle.value = withDelay(
@@ -220,27 +211,18 @@ export default function DashboardScreen() {
       ),
     );
   }, [avatarWiggle]);
+  const avatarWiggleStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${avatarWiggle.value}deg` }] }));
 
-  const avatarWiggleStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${avatarWiggle.value}deg` }],
-  }));
-
-  // ── "Recientes" title: subtle slide-in from left ──────────────────────────
   const sectionTitleEnter = FadeInLeft.duration(400).delay(300).springify();
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <LinearGradient
-        colors={["#06101F", "#030810", "#000000"]}
-        locations={[0, 0.45, 1]}
-        start={{ x: 0.3, y: 0 }}
-        end={{ x: 0.7, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "transparent" }}>
-        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-
+    <View style={styles.root}>
+      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* ── Header ── */}
           <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
             <Animated.View entering={FadeInLeft.duration(400).delay(100).springify()}>
@@ -257,10 +239,7 @@ export default function DashboardScreen() {
           </Animated.View>
 
           {/* ── Card Switcher ── */}
-          <Animated.View
-            entering={FadeInDown.duration(600).delay(80).springify()}
-            style={styles.section}
-          >
+          <Animated.View entering={FadeInDown.duration(600).delay(80).springify()} style={styles.section}>
             <CardSwitcher
               cards={cardData}
               activeAccountId={activeAccountId}
@@ -273,79 +252,74 @@ export default function DashboardScreen() {
             />
           </Animated.View>
 
-          {/* ── Quick Actions ── */}
-          <Animated.View
-            entering={FadeInDown.duration(500).delay(160).springify()}
-            style={[styles.section, { gap: 10 }]}
-          >
-            {/* Income + Expense */}
-            <View style={[styles.actionCard, { flexDirection: "row", padding: 0, overflow: "hidden" }]}>
+          {/* ── Quick Actions – Ingreso / Gasto ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(160).springify()} style={styles.section}>
+            <View style={styles.quickActionsCard}>
+              <View style={styles.cardTopHighlight} pointerEvents="none" />
+
               <Pressable
-                style={styles.actionBtn}
+                style={styles.quickActionBtn}
                 onPress={() => router.push({ pathname: "/add-transaction", params: { type: "income" } })}
               >
-                <Animated.View style={[styles.actionIcon, { backgroundColor: INCOME_COLOR + "18" }, iconPulseStyle]}>
-                  <Ionicons name="arrow-down" size={20} color={INCOME_COLOR} />
+                <Animated.View style={[styles.quickActionIcon, { backgroundColor: INCOME_COLOR + "1C" }, iconPulseStyle]}>
+                  <Ionicons name="arrow-down" size={24} color={INCOME_COLOR} />
                 </Animated.View>
-                <Text style={styles.actionLabel}>Añadir</Text>
-                <Text style={[styles.actionSub, { color: INCOME_COLOR }]}>Ingreso</Text>
+                <Text style={styles.quickActionLabel}>Ingreso</Text>
               </Pressable>
 
-              <View style={styles.actionDivider} />
+              <View style={styles.quickActionDivider} />
 
               <Pressable
-                style={styles.actionBtn}
+                style={styles.quickActionBtn}
                 onPress={() => router.push({ pathname: "/add-transaction", params: { type: "expense" } })}
               >
-                <Animated.View
-                  style={[
-                    styles.actionIcon,
-                    { backgroundColor: EXPENSE_COLOR + "18" },
-                    iconPulseStyle,
-                    // Offset phase so the expense icon pulses slightly after income
-                    { animationDelay: 300 } as any,
-                  ]}
-                >
-                  <Ionicons name="arrow-up" size={20} color={EXPENSE_COLOR} />
+                <Animated.View style={[styles.quickActionIcon, { backgroundColor: EXPENSE_COLOR + "1C" }, iconPulseStyle]}>
+                  <Ionicons name="arrow-up" size={24} color={EXPENSE_COLOR} />
                 </Animated.View>
-                <Text style={styles.actionLabel}>Añadir</Text>
-                <Text style={[styles.actionSub, { color: EXPENSE_COLOR }]}>Gasto</Text>
+                <Text style={styles.quickActionLabel}>Gasto</Text>
               </Pressable>
             </View>
 
-            {/* Savings Goals */}
-            <Pressable
-              style={[styles.actionCard, { flexDirection: "row", alignItems: "center" }]}
-              onPress={() => router.push("/savings-goals")}
-            >
-              <Animated.View style={[styles.actionIcon, { backgroundColor: PRIMARY + "18", marginRight: 14 }, iconPulseStyle]}>
-                <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
-              </Animated.View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.actionLabel}>Objetivos de ahorro</Text>
-                {goals.length === 0 ? (
-                  <Text style={[styles.actionSub, { color: colors.muted, marginTop: 3 }]}>Crea tu primer objetivo</Text>
-                ) : (
-                  <>
-                    <Text style={[styles.actionSub, { color: colors.muted, marginTop: 3 }]}>
-                      {goals.length} objetivo{goals.length !== 1 ? "s" : ""} · {formatCurrency(totalGoalCurrent, userProfile?.currencyCode)} de{" "}
-                      {formatCurrency(totalGoalTarget, userProfile?.currencyCode)}
-                    </Text>
-                    {/* Animated progress bar */}
-                    <View style={styles.goalBarTrack}>
-                      <Animated.View style={[styles.goalBarFill, goalBarStyle]} />
-                    </View>
-                  </>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.muted} style={{ marginLeft: 8 }} />
-            </Pressable>
+            {/* ── Goal progress card (if a goal exists) ── */}
+            {topGoal && (
+              <Pressable style={styles.goalCard} onPress={() => router.push("/savings-goals")}>
+                <View style={styles.cardTopHighlight} pointerEvents="none" />
+                <View style={[styles.goalIconBubble, { backgroundColor: PRIMARY + "1C" }]}>
+                  <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
+                </View>
+                <View style={styles.goalContent}>
+                  <Text style={styles.goalName} numberOfLines={1}>{topGoal.name}</Text>
+                  <Text style={styles.goalAmounts}>
+                    {formatCurrency(topGoal.currentAmount, userProfile?.currencyCode)}
+                    {" / "}
+                    {formatCurrency(topGoal.targetAmount, userProfile?.currencyCode)}
+                  </Text>
+                  <View style={styles.goalBarTrack}>
+                    <Animated.View style={[styles.goalBarFill, goalBarStyle]} />
+                  </View>
+                </View>
+                <View style={styles.goalRight}>
+                  <Text style={[styles.goalPercent, { color: PRIMARY }]}>{Math.round(topGoalPercent)}%</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+                </View>
+              </Pressable>
+            )}
+
+            {/* ── Empty goal nudge ── */}
+            {!topGoal && (
+              <Pressable style={[styles.goalCard, styles.goalCardEmpty]} onPress={() => router.push("/savings-goals")}>
+                <View style={styles.cardTopHighlight} pointerEvents="none" />
+                <Ionicons name="trophy-outline" size={18} color={PRIMARY} style={{ marginRight: 12 }} />
+                <Text style={styles.goalEmptyText}>Crea tu primer objetivo de ahorro</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+              </Pressable>
+            )}
           </Animated.View>
 
           {/* ── Recent Transactions ── */}
           <Animated.View
             entering={FadeInDown.duration(500).delay(240).springify()}
-            style={[styles.section, { marginTop: 20 }]}
+            style={[styles.section, { marginTop: 8 }]}
           >
             <Animated.View entering={sectionTitleEnter} style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recientes</Text>
@@ -355,7 +329,7 @@ export default function DashboardScreen() {
                     <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "500" }}>Cancelar</Text>
                   </Pressable>
                 )}
-                {transactions.length > 7 && (
+                {transactions.length > 5 && (
                   <Pressable onPress={() => router.push("/(tabs)/transactions")}>
                     <Text style={{ color: PRIMARY, fontSize: 13, fontWeight: "600" }}>Ver todo</Text>
                   </Pressable>
@@ -372,7 +346,10 @@ export default function DashboardScreen() {
             )}
 
             {recentTxs.length === 0 ? (
-              <Animated.View entering={FadeInDown.duration(400).delay(350).springify()} style={styles.emptyState}>
+              <Animated.View
+                entering={FadeInDown.duration(400).delay(350).springify()}
+                style={styles.emptyState}
+              >
                 <View style={[styles.emptyIcon, { backgroundColor: PRIMARY + "15" }]}>
                   <Ionicons name="wallet-outline" size={30} color={PRIMARY} />
                 </View>
@@ -383,7 +360,6 @@ export default function DashboardScreen() {
             ) : (
               <>
                 {recentTxs.map((tx, i) => (
-                  // Stagger each transaction item: 50ms per item, max 350ms
                   <Animated.View
                     key={tx.id}
                     entering={FadeInDown.duration(350).delay(Math.min(i * 55, 350)).springify()}
@@ -399,20 +375,25 @@ export default function DashboardScreen() {
                     />
                   </Animated.View>
                 ))}
+                {!selectionMode && (
+                  <Pressable
+                    style={styles.seeMoreBtn}
+                    onPress={() => router.push("/(tabs)/transactions")}
+                  >
+                    <Text style={styles.seeMoreText}>Ver más</Text>
+                    <Ionicons name="chevron-forward" size={14} color={PRIMARY} />
+                  </Pressable>
+                )}
                 {selectionMode && <View style={{ height: 90 }} />}
               </>
             )}
           </Animated.View>
-
         </ScrollView>
       </SafeAreaView>
 
       {/* ── Bulk delete FAB ── */}
       {selectionMode && (
-        <Animated.View
-          entering={FadeInDown.duration(300).springify()}
-          style={styles.fabWrapper}
-        >
+        <Animated.View entering={FadeInDown.duration(300).springify()} style={styles.fabWrapper}>
           <Pressable
             style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : colors.border }]}
             disabled={selectedIds.length === 0}
@@ -429,20 +410,28 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+
+  // ── Header ──
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingTop: 14,
     paddingBottom: 8,
   },
-  section: {
-    marginHorizontal: 20,
-    marginTop: 16,
-  },
   headerDate: {
-    color: "rgba(255,255,255,0.38)",
+    color: "rgba(255,255,255,0.35)",
     fontSize: 12,
     fontWeight: "500",
     letterSpacing: 0.2,
@@ -464,59 +453,137 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PRIMARY + "30",
   },
-  actionCard: {
-    backgroundColor: "#0E0E0E",
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#1C1C1C",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
+
+  section: {
+    marginHorizontal: 20,
+    marginTop: 16,
   },
-  actionBtn: {
+
+  // ── Glass card shared highlight ──
+  cardTopHighlight: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.09)",
+    borderRadius: 999,
+  },
+
+  // ── Quick actions (Ingreso / Gasto) ──
+  quickActionsCard: {
+    flexDirection: "row",
+    backgroundColor: "#0D0D14",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    paddingVertical: 22,
+    paddingHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 6,
+    overflow: "hidden",
+  },
+  quickActionBtn: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 12,
+    gap: 11,
   },
-  actionIcon: {
+  quickActionDivider: {
+    width: 1,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    marginVertical: 8,
+  },
+  quickActionIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionLabel: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: -0.1,
+  },
+
+  // ── Goal card ──
+  goalCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0D0D14",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    padding: 16,
+    marginTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 5,
+    overflow: "hidden",
+  },
+  goalCardEmpty: {
+    paddingVertical: 14,
+  },
+  goalIconBubble: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginRight: 14,
   },
-  actionLabel: {
+  goalContent: {
+    flex: 1,
+    gap: 2,
+  },
+  goalName: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
+    letterSpacing: -0.1,
   },
-  actionSub: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  actionDivider: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: "#222222",
-    marginVertical: 14,
+  goalAmounts: {
+    color: "#606070",
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 1,
   },
   goalBarTrack: {
     height: 4,
     borderRadius: 2,
     overflow: "hidden",
     marginTop: 8,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#1C1C2A",
   },
   goalBarFill: {
     height: "100%",
     borderRadius: 2,
     backgroundColor: PRIMARY,
   },
+  goalRight: {
+    alignItems: "flex-end",
+    gap: 4,
+    marginLeft: 12,
+  },
+  goalPercent: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  goalEmptyText: {
+    flex: 1,
+    color: "#606070",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+
+  // ── Section header ──
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -530,10 +597,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   selectionHint: {
-    color: "#606060",
+    color: "#606070",
     fontSize: 11,
     marginBottom: 10,
   },
+
+  // ── Empty state ──
   emptyState: {
     alignItems: "center",
     paddingVertical: 48,
@@ -547,11 +616,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyText: {
-    color: "#606060",
+    color: "#606070",
     fontSize: 14,
     textAlign: "center",
     lineHeight: 22,
   },
+
+  // ── Ver más ──
+  seeMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    gap: 5,
+  },
+  seeMoreText: {
+    color: PRIMARY,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // ── Bulk delete FAB ──
   fabWrapper: {
     position: "absolute",
     bottom: 28,

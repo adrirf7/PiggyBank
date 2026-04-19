@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/text";
 import Animated, { FadeInDown, Layout } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -14,6 +15,7 @@ import { useTransactionStore } from "@/store/use-transactions";
 import { RecurrenceType } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 import { getCurrencySymbol } from "@/utils/currency";
+import { format } from "date-fns";
 
 const RECURRENCE_OPTIONS: { key: RecurrenceType; label: string; icon: string }[] = [
   { key: "none", label: "Una vez", icon: "radio-button-off-outline" },
@@ -241,7 +243,7 @@ export default function AddGoalContributionScreen() {
         type: type === "add" ? "income" : "expense",
         amount: numAmount,
         description: description.trim() || (type === "add" ? `Aportación a ${goal.name}` : `Retiro de ${goal.name}`),
-        date: new Date().toISOString().split("T")[0],
+        date: format(new Date(), "yyyy-MM-dd"),
         recurrence: recurrence !== "none" ? recurrence : undefined,
         ...(recurrence === "weekly" && selectedWeekDay !== null && { recurrenceWeekDay: selectedWeekDay }),
         ...(recurrence === "monthly" && selectedMonthDay !== null && { recurrenceMonthDay: selectedMonthDay }),

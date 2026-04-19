@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { LayoutChangeEvent, StyleSheet, Text, TextStyle, View, ViewStyle } from "react-native";
+import { LayoutChangeEvent, StyleSheet, TextStyle, View, ViewStyle } from "react-native";
+import { Text } from "@/components/text";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 
 import { formatCurrency } from "@/utils/calculations";

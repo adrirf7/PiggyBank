@@ -4,7 +4,8 @@ import { addDays, addMonths, addWeeks, addYears, endOfMonth, endOfWeek, format, 
 import { es } from "date-fns/locale";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, NativeScrollEvent, NativeSyntheticEvent, NativeTouchEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, NativeScrollEvent, NativeSyntheticEvent, NativeTouchEvent, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/text";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, G, Line, Path, Text as SvgText } from "react-native-svg";
@@ -385,7 +386,8 @@ export default function AnalyticsScreen() {
   }, [closeSelectors, isPeriodDropdownOpen]);
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
+    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: "transparent" }}>
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -693,6 +695,7 @@ export default function AnalyticsScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 

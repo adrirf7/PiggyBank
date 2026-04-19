@@ -48,4 +48,5 @@ export interface SavingsGoal {
   accountId?: string; // ID de la cuenta asociada
   targetDate?: string; // ISO date "YYYY-MM-DD"
   createdAt: string; // ISO date "YYYY-MM-DD"
+  order?: number; // Display priority (0 = highest). Lower = shown first.
 }

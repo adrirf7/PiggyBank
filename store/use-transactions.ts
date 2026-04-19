@@ -177,6 +177,7 @@ export function useTransactionStore() {
       category: "savings-goal",
       description: data.description,
       date: data.date,
+      createdAt: oldTransaction.createdAt ?? new Date().toISOString(),
       goalId: data.goalId,
       isGoalContribution: true,
       ...(data.accountId && { accountId: data.accountId }),

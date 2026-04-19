@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, BackHandler, FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/text";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -258,7 +259,8 @@ export default function TransactionsScreen() {
   }, [highlightedTransactionId]);
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
+    <SafeAreaView edges={["top"]} className="flex-1" style={{ flex: 1, backgroundColor: "transparent" }}>
       {/* ── Header ── */}
       <Animated.View entering={FadeInDown.duration(400).delay(0)} className="px-5 pt-3 pb-2">
         <View className="flex-row items-center justify-between mb-1">
@@ -396,26 +398,28 @@ export default function TransactionsScreen() {
                 });
               }, 180);
             }}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
             renderItem={renderTransaction}
+            style={{ flex: 1 }}
           />
         </Animated.View>
       )}
+    </SafeAreaView>
 
-      {/* ── FAB ── */}
+      {/* ── FAB (fuera del SafeAreaView para posicionamiento absoluto correcto) ── */}
       {selectionMode && (
-        <Animated.View entering={FadeInDown.duration(400).delay(220)}>
+        <Animated.View entering={FadeInDown.duration(400).delay(220)} style={styles.fabWrapper}>
           <Pressable
-            className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
             style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : colors.border }]}
             disabled={selectedIds.length === 0}
             onPress={handleDeleteSelected}
           >
-            <Text className="text-white font-bold text-sm">Eliminar seleccionadas ({selectedIds.length})</Text>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+              Eliminar seleccionadas ({selectedIds.length})
+            </Text>
           </Pressable>
         </Animated.View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -427,8 +431,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  fabWrapper: {
+    position: "absolute",
+    bottom: 28,
+    left: 24,
+    right: 24,
+  },
   fab: {
-    shadowColor: PRIMARY,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#EF4444",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

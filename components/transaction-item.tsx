@@ -1,12 +1,21 @@
-import { Colors } from "@/constants/theme";
+import { CategoryIcon } from "@/components/category-icon";
+import { Text } from "@/components/text";
+import { Colors, EXPENSE_COLOR, INCOME_COLOR } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { Category, SavingsGoal, Transaction } from "@/types";
 import { formatCurrency } from "@/utils/calculations";
 import { Ionicons } from "@expo/vector-icons";
-import { CategoryIcon } from "@/components/category-icon";
 import React, { useEffect, useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
-import Animated, { FadeInRight, SlideOutLeft, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import { Pressable, StyleSheet, View } from "react-native";
+import Animated, {
+  FadeInRight,
+  SlideOutLeft,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
 interface Props {
   transaction: Transaction;
@@ -23,18 +32,12 @@ interface Props {
 
 function getRecurrenceLabel(recurrence?: string): string {
   switch (recurrence) {
-    case "daily":
-      return "Diario";
-    case "weekly":
-      return "Semanal";
-    case "monthly":
-      return "Mensual";
-    case "quarterly":
-      return "Trimestral";
-    case "yearly":
-      return "Anual";
-    default:
-      return "";
+    case "daily":   return "Diario";
+    case "weekly":  return "Semanal";
+    case "monthly": return "Mensual";
+    case "quarterly": return "Trimestral";
+    case "yearly":  return "Anual";
+    default:        return "";
   }
 }
 
@@ -51,7 +54,6 @@ function TransactionItem({
   categoriesById,
 }: Props) {
   const { userProfile } = useAuth();
-  const colors = Colors.dark;
   const isIncome = transaction.type === "income";
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
   const shakeRotation = useSharedValue(0);
@@ -75,9 +77,24 @@ function TransactionItem({
     return { displayIcon: icon, displayColor: color, displayName: name };
   }, [categoriesById, goalById, transaction.category, transaction.goalId, transaction.isGoalContribution]);
 
+  const timeStr = useMemo(() => {
+    try {
+      return new Date(transaction.date).toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  }, [transaction.date]);
+
   useEffect(() => {
     if (selectable && selected) {
-      shakeRotation.value = withRepeat(withSequence(withTiming(-1.1, { duration: 180 }), withTiming(1.1, { duration: 180 })), -1, true);
+      shakeRotation.value = withRepeat(
+        withSequence(withTiming(-1.1, { duration: 180 }), withTiming(1.1, { duration: 180 })),
+        -1,
+        true,
+      );
       return;
     }
     shakeRotation.value = withTiming(0, { duration: 160 });
@@ -85,66 +102,171 @@ function TransactionItem({
 
   useEffect(() => {
     if (!highlightPulse) return;
-    pulseScale.value = withSequence(withTiming(1.08, { duration: 170 }), withTiming(1, { duration: 170 }), withTiming(1.08, { duration: 170 }), withTiming(1, { duration: 170 }));
+    pulseScale.value = withSequence(
+      withTiming(1.08, { duration: 170 }),
+      withTiming(1, { duration: 170 }),
+      withTiming(1.08, { duration: 170 }),
+      withTiming(1, { duration: 170 }),
+    );
   }, [highlightPulse, pulseScale]);
 
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ rotateZ: `${shakeRotation.value}deg` }, { scale: pulseScale.value }],
   }));
 
+  const amountColor = isIncome ? INCOME_COLOR : EXPENSE_COLOR;
+
   return (
-    <Animated.View entering={animated ? FadeInRight.duration(300) : undefined} exiting={animated ? SlideOutLeft.duration(250) : undefined} style={shakeStyle}>
+    <Animated.View
+      entering={animated ? FadeInRight.duration(300) : undefined}
+      exiting={animated ? SlideOutLeft.duration(250) : undefined}
+      style={shakeStyle}
+    >
       <Pressable
-        className="flex-row items-center px-4 py-3 rounded-2xl mb-2 active:opacity-70"
-        style={{
-          backgroundColor: colors.card,
-          borderWidth: selectable ? 1.5 : 0,
-          borderColor: selected ? "#EF4444" : colors.border,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0,
-          shadowRadius: 4,
-          elevation: 0,
-        }}
+        style={[
+          styles.card,
+          selectable
+            ? { borderColor: selected ? EXPENSE_COLOR : "rgba(255,255,255,0.10)", borderWidth: 1.5 }
+            : styles.cardBorder,
+        ]}
         onPress={onPress ? () => onPress(transaction.id) : undefined}
-        onLongPress={onLongPress ? () => onLongPress(transaction.id) : onDelete ? () => onDelete(transaction.id) : undefined}
+        onLongPress={
+          onLongPress
+            ? () => onLongPress(transaction.id)
+            : onDelete
+              ? () => onDelete(transaction.id)
+              : undefined
+        }
       >
+        {/* Top-edge glass highlight */}
+        <View style={styles.topHighlight} pointerEvents="none" />
+
         {/* Category icon bubble */}
-        <View className="w-11 h-11 rounded-full items-center justify-center mr-3" style={{ backgroundColor: displayColor + "20" }}>
-          <CategoryIcon icon={displayIcon} size={22} color={displayColor} />
+        <View style={[styles.iconBubble, { backgroundColor: displayColor + "22" }]}>
+          <CategoryIcon icon={displayIcon} size={20} color={displayColor} />
         </View>
 
-        {/* Details */}
-        <View className="flex-1">
-          <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>
-            {transaction.description || displayName || "Sin descripción"}
+        {/* Content */}
+        <View style={styles.content}>
+          <Text style={styles.name} numberOfLines={1}>
+            {transaction.description || displayName}
           </Text>
-          <Text className="text-xs mt-0.5" style={{ color: colors.muted }}>
-            {displayName}
+          <Text style={styles.sub} numberOfLines={1}>
+            {displayName}{timeStr ? ` · ${timeStr}` : ""}
           </Text>
           {!!recurrenceLabel && (
-            <View className="self-start mt-1 px-2 py-0.5 rounded-full flex-row items-center" style={{ backgroundColor: (isIncome ? "#22C55E" : "#EF4444") + "20" }}>
-              <Ionicons name="repeat-outline" size={11} color={isIncome ? "#22C55E" : "#EF4444"} />
-              <Text className="text-[10px] font-semibold ml-1" style={{ color: isIncome ? "#22C55E" : "#EF4444" }}>
-                {recurrenceLabel}
-              </Text>
+            <View style={[styles.recurrencePill, { backgroundColor: amountColor + "1A" }]}>
+              <Ionicons name="repeat-outline" size={10} color={amountColor} />
+              <Text style={[styles.recurrenceText, { color: amountColor }]}>{recurrenceLabel}</Text>
             </View>
           )}
         </View>
 
         {/* Amount */}
-        <Text className="text-sm font-bold" style={{ color: isIncome ? "#22C55E" : "#EF4444" }}>
-          {isIncome ? "+" : "-"}
-          {formatCurrency(transaction.amount, userProfile?.currencyCode)}
-        </Text>
+        <View style={styles.amountSection}>
+          <Text style={[styles.amount, { color: amountColor }]}>
+            {isIncome ? "+" : "-"}{formatCurrency(transaction.amount, userProfile?.currencyCode)}
+          </Text>
+          <Text style={styles.amountType}>{isIncome ? "Ingreso" : "Gasto"}</Text>
+        </View>
+
         {selectable && (
-          <View className="ml-3">
-            <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={20} color={selected ? "#EF4444" : colors.tabIconDefault} />
+          <View style={styles.selectionIcon}>
+            <Ionicons
+              name={selected ? "checkmark-circle" : "ellipse-outline"}
+              size={20}
+              color={selected ? EXPENSE_COLOR : Colors.dark.tabIconDefault}
+            />
           </View>
         )}
       </Pressable>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    marginBottom: 6,
+    backgroundColor: "#0D0D14",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.30,
+    shadowRadius: 6,
+    elevation: 3,
+    overflow: "hidden",
+  },
+  cardBorder: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  topHighlight: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  iconBubble: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  content: {
+    flex: 1,
+    gap: 2,
+  },
+  name: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: -0.1,
+  },
+  sub: {
+    fontSize: 11,
+    color: "#606070",
+    fontWeight: "500",
+  },
+  recurrencePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 20,
+    gap: 3,
+  },
+  recurrenceText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  amountSection: {
+    alignItems: "flex-end",
+    gap: 2,
+    marginLeft: 10,
+  },
+  amount: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  amountType: {
+    fontSize: 10,
+    color: "#404055",
+    fontWeight: "500",
+  },
+  selectionIcon: {
+    marginLeft: 10,
+  },
+});
 
 export default React.memo(TransactionItem);

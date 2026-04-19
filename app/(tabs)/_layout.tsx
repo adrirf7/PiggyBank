@@ -3,7 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { withLayoutContext } from "expo-router";
 import React, { useEffect } from "react";
-import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/text";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -101,8 +102,28 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
 
   return (
     <NavigationContent>
-      <View style={{ flex: 1, backgroundColor: colors.background, overflow: "hidden" }}>
-        {/* Pager */}
+      <View style={{ flex: 1, overflow: "hidden" }}>
+
+        {/* ── Fondo estático global (se renderiza una vez, el contenido desliza encima) ── */}
+        <View style={StyleSheet.absoluteFillObject}>
+          <LinearGradient
+            colors={["#03091E", "#010408", "#000000"]}
+            locations={[0, 0.48, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {/* Rayos de luz */}
+          <View pointerEvents="none" style={styles.raysContainer}>
+            <LinearGradient colors={["rgba(93,168,255,0.26)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "5%",  width: 38, transform: [{ rotate: "-22deg" }] }]} />
+            <LinearGradient colors={["rgba(93,168,255,0.12)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "21%", width: 22, transform: [{ rotate: "-13deg" }] }]} />
+            <LinearGradient colors={["rgba(93,168,255,0.21)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "40%", width: 54, transform: [{ rotate: "-4deg"  }] }]} />
+            <LinearGradient colors={["rgba(93,168,255,0.10)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "62%", width: 28, transform: [{ rotate: "10deg"  }] }]} />
+            <LinearGradient colors={["rgba(93,168,255,0.23)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "76%", width: 44, transform: [{ rotate: "21deg"  }] }]} />
+          </View>
+        </View>
+
+        {/* ── Pager (solo el contenido desliza) ── */}
         <GestureDetector gesture={panGesture}>
           <Animated.View style={[{ flex: 1, flexDirection: "row", width: SCREEN_WIDTH * swipeableRoutes.length }, animatedStyle]}>
             {swipeableRoutes.map((route) => (
@@ -152,6 +173,19 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  raysContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  ray: {
+    position: "absolute",
+    top: -60,
+    height: "55%",
+    borderRadius: 30,
+  },
   pill: {
     position: "absolute",
     left: 20,

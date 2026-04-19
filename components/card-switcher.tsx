@@ -4,7 +4,8 @@ import { Account } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text } from "@/components/text";
 import Animated, { Extrapolation, SharedValue, interpolate, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { BankCard, BankCardSkeleton } from "./bank-card";
 
@@ -197,9 +198,8 @@ export function CardSwitcher({ cards, activeAccountId, onSelectAccount, onAddAcc
       <Animated.View style={[{ zIndex: 1000, position: "relative" }, activeCardStyle]}>
         <Pressable
           onPress={() => setExpanded((v) => !v)}
-          onLayout={(e) => {
-            cardHeightSv.value = e.nativeEvent.layout.height;
-          }}
+          onLayout={(e) => { cardHeightSv.value = e.nativeEvent.layout.height; }}
+          style={{ borderRadius: 24, overflow: "hidden" }}
         >
           <BankCard
             theme={activeTheme}
