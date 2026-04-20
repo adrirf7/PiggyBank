@@ -42,14 +42,13 @@ interface StackedCardProps {
   totalOtherCards: number;
   expanded: boolean;
   expandProgress: SharedValue<number>;
-  cardHeightSv: SharedValue<number>;
   onSelect: () => void;
   currencyCode?: string;
   userName?: string;
   userCountry?: string;
 }
 
-function StackedCard({ card, index, totalOtherCards, expanded, expandProgress, cardHeightSv, onSelect, currencyCode, userName, userCountry }: StackedCardProps) {
+function StackedCard({ card, index, totalOtherCards, expanded, expandProgress, onSelect, currencyCode, userName, userCountry }: StackedCardProps) {
   const theme = getCardTheme(card.account.themeId);
 
   const style = useAnimatedStyle(() => {
@@ -209,7 +208,7 @@ export function CardSwitcher({ cards, activeAccountId, onSelectAccount, onAddAcc
             totalExpense={activeCard.totalExpense}
             totalSaved={activeCard.totalSaved}
             currencyCode={currencyCode}
-            showBottomChevron={otherCards.length > 0}
+            showBottomChevron
             chevronExpanded={expanded}
             accountIcon={activeCard.account.icon}
             userName={userName}
@@ -228,7 +227,6 @@ export function CardSwitcher({ cards, activeAccountId, onSelectAccount, onAddAcc
             totalOtherCards={otherCards.length}
             expanded={expanded}
             expandProgress={expandProgress}
-            cardHeightSv={cardHeightSv}
             onSelect={() => handleSelect(card.account.id)}
             currencyCode={currencyCode}
             userName={userName}

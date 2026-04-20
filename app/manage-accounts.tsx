@@ -44,7 +44,7 @@ export default function ManageAccountsScreen() {
   const [editIcon, setEditIcon] = useState("piggy-bank");
 
   const [newName, setNewName] = useState("");
-  const [newThemeId, setNewThemeId] = useState(CARD_THEMES[0].id);
+  const [newThemeId, setNewThemeId] = useState("flame");
   const [newIcon, setNewIcon] = useState("piggy-bank");
   const [saving, setSaving] = useState(false);
   const reachedAccountLimit = accounts.length >= maxAccounts;
@@ -104,7 +104,7 @@ export default function ManageAccountsScreen() {
     try {
       await addAccount(newName.trim(), newThemeId, newIcon);
       setNewName("");
-      setNewThemeId(CARD_THEMES[0].id);
+      setNewThemeId("flame");
       setNewIcon("piggy-bank");
     } catch (error) {
       if (error instanceof Error && error.message === "MAX_ACCOUNTS_REACHED") {
@@ -149,7 +149,7 @@ export default function ManageAccountsScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {/* ── Create new account ────────────────────────────────── */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 24 }]}>
+        {!editingId && <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 24 }]}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <Text style={[styles.sectionTitle, { color: colors.muted }]}>NUEVA CUENTA</Text>
             <Text style={[styles.sectionTitle, { color: colors.muted }]}>
@@ -198,7 +198,7 @@ export default function ManageAccountsScreen() {
           >
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Crear cuenta</Text>
           </Pressable>
-        </View>
+        </View>}
 
         {/* ── Existing accounts ─────────────────────────────────── */}
         {accounts.length > 0 ? (

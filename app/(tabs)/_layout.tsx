@@ -107,8 +107,8 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
         {/* ── Fondo estático global (se renderiza una vez, el contenido desliza encima) ── */}
         <View style={StyleSheet.absoluteFillObject}>
           <LinearGradient
-            colors={["#03091E", "#010408", "#000000"]}
-            locations={[0, 0.48, 1]}
+            colors={["#1A1A1A", "#111111", "#0A0A0A"]}
+            locations={[0, 0.5, 1]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject}
