@@ -319,7 +319,7 @@ export default function BarChart({ data, height = 180, incomeColor = INCOME_COLO
               x2={svgWidth - chartPaddingRight}
               y1={y}
               y2={y}
-              stroke="#334155"
+              stroke="#2a2a2a"
               strokeWidth={1}
               strokeDasharray={ratio === 0 ? "" : "3,3"}
             />

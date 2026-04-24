@@ -4,16 +4,16 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { BackHandler, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { Text } from "@/components/text";
 import Animated, {
   Easing,
   FadeInDown,
   FadeInLeft,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
@@ -43,6 +43,10 @@ export default function DashboardScreen() {
   const { accounts, activeAccount, activeAccountId, switchAccount, loading: accountsLoading } = useAccount();
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeSegment, setActiveSegment] = useState<string | null>(null);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState({ top: 300, right: 20 });
+  const moreButtonRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const clearSelection = useCallback(() => {
@@ -93,6 +97,32 @@ export default function DashboardScreen() {
   );
   const goalById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
   const categoriesById = useMemo(() => new Map(allCategories.map((c) => [c.id, c])), [allCategories]);
+
+  const todaySpending = useMemo(() => {
+    const todayStr = new Date().toLocaleDateString("sv-SE"); // "YYYY-MM-DD" in local time
+    const todayExpenses = transactions.filter(
+      (tx) => tx.type === "expense" && !tx.isGoalContribution && tx.date === todayStr,
+    );
+    const total = todayExpenses.reduce((sum, tx) => sum + (typeof tx.amount === "number" ? tx.amount : 0), 0);
+    const byCategory = new Map<string, { name: string; color: string; amount: number }>();
+    for (const tx of todayExpenses) {
+      const cat = categoriesById.get(tx.category);
+      const existing = byCategory.get(tx.category);
+      if (existing) {
+        existing.amount += tx.amount;
+      } else {
+        byCategory.set(tx.category, {
+          name: cat?.name ?? "Sin categoría",
+          color: cat?.color ?? "#64748B",
+          amount: tx.amount,
+        });
+      }
+    }
+    const segments = Array.from(byCategory.entries())
+      .map(([id, data]) => ({ id, ...data, pct: total > 0 ? (data.amount / total) * 100 : 0 }))
+      .sort((a, b) => b.amount - a.amount);
+    return { total, segments };
+  }, [transactions, categoriesById]);
 
   const selectedTransactions = useMemo(() => {
     if (selectedIds.length === 0) return [];
@@ -173,22 +203,25 @@ export default function DashboardScreen() {
     });
   };
 
-  // ── Icon pulse animation ──────────────────────────────────────────────────────
-  const iconPulse = useSharedValue(1);
-  useEffect(() => {
-    iconPulse.value = withDelay(
-      800,
-      withRepeat(
-        withSequence(
-          withTiming(1.10, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-          withTiming(1.0, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        false,
-      ),
-    );
-  }, [iconPulse]);
-  const iconPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconPulse.value }] }));
+  const openMoreMenu = () => {
+    moreButtonRef.current?.measure((_x, _y, _w, h, _pageX, pageY) => {
+      menuOpacity.value = 0;
+      menuTranslateY.value = -6;
+      setMenuAnchor({ top: pageY + h + 6, right: 20 });
+      setShowMoreMenu(true);
+    });
+  };
+
+  const handleShare = async () => {
+    setShowMoreMenu(false);
+    const card = cardData.find((c) => c.account.id === activeAccountId) ?? cardData[0];
+    const balanceStr = card ? formatCurrency(card.balance, userProfile?.currencyCode) : "—";
+    try {
+      await Share.share({
+        message: `Mi cuenta "${card?.account.name ?? "Mi cuenta"}" en PiggyBank\nSaldo: ${balanceStr}`,
+      });
+    } catch { /* ignore */ }
+  };
 
   // ── Goal bar fill animation ───────────────────────────────────────────────────
   const goalBarSv = useSharedValue(0);
@@ -212,6 +245,27 @@ export default function DashboardScreen() {
     );
   }, [avatarWiggle]);
   const avatarWiggleStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${avatarWiggle.value}deg` }] }));
+
+  // ── More menu animation ───────────────────────────────────────────────────────
+  const menuOpacity = useSharedValue(0);
+  const menuTranslateY = useSharedValue(-6);
+
+  useEffect(() => {
+    if (showMoreMenu) {
+      menuOpacity.value = withTiming(1, { duration: 150 });
+      menuTranslateY.value = withTiming(0, { duration: 150 });
+    }
+  }, [showMoreMenu, menuOpacity, menuTranslateY]);
+
+  const menuAnimStyle = useAnimatedStyle(() => ({
+    opacity: menuOpacity.value,
+    transform: [{ translateY: menuTranslateY.value }],
+  }));
+
+  const closeMoreMenu = () => {
+    menuOpacity.value = withTiming(0, { duration: 120 }, () => runOnJS(setShowMoreMenu)(false));
+    menuTranslateY.value = withTiming(-6, { duration: 120 });
+  };
 
   const sectionTitleEnter = FadeInLeft.duration(400).delay(300).springify();
 
@@ -252,38 +306,107 @@ export default function DashboardScreen() {
             />
           </Animated.View>
 
-          {/* ── Quick Actions – Ingreso / Gasto ── */}
+          {/* ── 4 Quick Action Buttons ── */}
           <Animated.View entering={FadeInDown.duration(500).delay(160).springify()} style={styles.section}>
-            <View style={styles.quickActionsCard}>
-              <View style={styles.cardTopHighlight} pointerEvents="none" />
-
-              <Pressable
-                style={styles.quickActionBtn}
-                onPress={() => router.push({ pathname: "/add-transaction", params: { type: "income" } })}
-              >
-                <Animated.View style={[styles.quickActionIcon, { backgroundColor: INCOME_COLOR + "1C" }, iconPulseStyle]}>
-                  <Ionicons name="arrow-down" size={24} color={INCOME_COLOR} />
-                </Animated.View>
-                <Text style={styles.quickActionLabel}>Ingreso</Text>
+            <View style={styles.quickBtnsRow}>
+              <Pressable style={styles.quickBtn} onPress={() => router.push({ pathname: "/add-transaction", params: { type: "income" } })}>
+                <View style={styles.quickBtnCard}>
+                  <Ionicons name="arrow-down-outline" size={20} color="#fff" />
+                  <Text style={styles.quickBtnLabel}>Ingreso</Text>
+                </View>
               </Pressable>
-
-              <View style={styles.quickActionDivider} />
-
-              <Pressable
-                style={styles.quickActionBtn}
-                onPress={() => router.push({ pathname: "/add-transaction", params: { type: "expense" } })}
-              >
-                <Animated.View style={[styles.quickActionIcon, { backgroundColor: EXPENSE_COLOR + "1C" }, iconPulseStyle]}>
-                  <Ionicons name="arrow-up" size={24} color={EXPENSE_COLOR} />
-                </Animated.View>
-                <Text style={styles.quickActionLabel}>Gasto</Text>
+              <Pressable style={styles.quickBtn} onPress={() => router.push({ pathname: "/add-transaction", params: { type: "expense" } })}>
+                <View style={styles.quickBtnCard}>
+                  <Ionicons name="arrow-up-outline" size={20} color="#fff" />
+                  <Text style={styles.quickBtnLabel}>Gasto</Text>
+                </View>
               </Pressable>
+              <Pressable style={styles.quickBtn} onPress={() => router.push("/savings-goals")}>
+                <View style={styles.quickBtnCard}>
+                  <Ionicons name="trophy-outline" size={20} color="#fff" />
+                  <Text style={styles.quickBtnLabel}>Objetivos</Text>
+                </View>
+              </Pressable>
+              <View ref={moreButtonRef} style={styles.quickBtn} collapsable={false}>
+                <Pressable style={{ flex: 1 }} onPress={openMoreMenu}>
+                  <View style={styles.quickBtnCard}>
+                    <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
+                    <Text style={styles.quickBtnLabel}>Más</Text>
+                  </View>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* ── Daily spending card ── */}
+          <Animated.View entering={FadeInDown.duration(500).delay(200).springify()} style={styles.section}>
+            <View style={styles.spendingCard}>
+              <Text style={styles.spendingTitle}>Gasto del día</Text>
+              <Text style={styles.spendingAmount}>
+                {formatCurrency(todaySpending.total, userProfile?.currencyCode)}
+              </Text>
+
+              {/* Segmented bar */}
+              <View style={styles.spendingBarWrap}>
+                {todaySpending.segments.length > 0 ? (
+                  todaySpending.segments.map((seg) => (
+                    <Pressable
+                      key={seg.id}
+                      style={[
+                        styles.spendingSegment,
+                        {
+                          flex: seg.amount,
+                          backgroundColor: seg.color,
+                          opacity: activeSegment !== null && activeSegment !== seg.id ? 0.3 : 1,
+                        },
+                      ]}
+                      onPress={() => setActiveSegment((prev) => (prev === seg.id ? null : seg.id))}
+                    />
+                  ))
+                ) : (
+                  <View style={styles.spendingSegmentEmpty} />
+                )}
+              </View>
+
+              {/* Tooltip for tapped segment */}
+              {activeSegment !== null && (() => {
+                const seg = todaySpending.segments.find((s) => s.id === activeSegment);
+                if (!seg) return null;
+                return (
+                  <View style={styles.segTooltip}>
+                    <View style={[styles.segTooltipDot, { backgroundColor: seg.color }]} />
+                    <Text style={styles.segTooltipName} numberOfLines={1}>{seg.name}</Text>
+                    <Text style={styles.segTooltipAmount}>{formatCurrency(seg.amount, userProfile?.currencyCode)}</Text>
+                    <Text style={[styles.segTooltipPct, { color: seg.color }]}>{seg.pct.toFixed(0)}%</Text>
+                  </View>
+                );
+              })()}
+
+              {/* Legend — all categories */}
+              {todaySpending.segments.length > 0 ? (
+                <View style={styles.spendingLegend}>
+                  {todaySpending.segments.map((seg) => (
+                    <Pressable
+                      key={seg.id}
+                      style={[
+                        styles.spendingLegendItem,
+                        activeSegment !== null && activeSegment !== seg.id && { opacity: 0.35 },
+                      ]}
+                      onPress={() => setActiveSegment((prev) => (prev === seg.id ? null : seg.id))}
+                    >
+                      <View style={[styles.spendingLegendDot, { backgroundColor: seg.color }]} />
+                      <Text style={styles.spendingLegendText} numberOfLines={1}>{seg.name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.spendingEmpty}>Sin gastos registrados hoy</Text>
+              )}
             </View>
 
-            {/* ── Goal progress card (if a goal exists) ── */}
+            {/* ── Goal progress card ── */}
             {topGoal && (
               <Pressable style={styles.goalCard} onPress={() => router.push("/savings-goals")}>
-                <View style={styles.cardTopHighlight} pointerEvents="none" />
                 <View style={[styles.goalIconBubble, { backgroundColor: PRIMARY + "1C" }]}>
                   <Ionicons name="trophy-outline" size={20} color={PRIMARY} />
                 </View>
@@ -304,11 +427,8 @@ export default function DashboardScreen() {
                 </View>
               </Pressable>
             )}
-
-            {/* ── Empty goal nudge ── */}
             {!topGoal && (
               <Pressable style={[styles.goalCard, styles.goalCardEmpty]} onPress={() => router.push("/savings-goals")}>
-                <View style={styles.cardTopHighlight} pointerEvents="none" />
                 <Ionicons name="trophy-outline" size={18} color={PRIMARY} style={{ marginRight: 12 }} />
                 <Text style={styles.goalEmptyText}>Crea tu primer objetivo de ahorro</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.muted} />
@@ -391,6 +511,27 @@ export default function DashboardScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      {/* ── More menu ── */}
+      {showMoreMenu && (
+        <Pressable style={styles.moreBackdrop} onPress={closeMoreMenu} />
+      )}
+      {showMoreMenu && (
+        <Animated.View style={[styles.moreCard, { top: menuAnchor.top, right: menuAnchor.right }, menuAnimStyle]}>
+          <Pressable style={styles.moreItem} onPress={handleShare}>
+            <Ionicons name="share-outline" size={17} color="#FFFFFF" />
+            <Text style={styles.moreItemText}>Compartir cuenta</Text>
+          </Pressable>
+          <View style={styles.moreDivider} />
+          <Pressable
+            style={styles.moreItem}
+            onPress={() => { closeMoreMenu(); setTimeout(() => router.push("/manage-categories"), 140); }}
+          >
+            <Ionicons name="pricetags-outline" size={17} color="#FFFFFF" />
+            <Text style={styles.moreItemText}>Personalizar categorías</Text>
+          </Pressable>
+        </Animated.View>
+      )}
+
       {/* ── Bulk delete FAB ── */}
       {selectionMode && (
         <Animated.View entering={FadeInDown.duration(300).springify()} style={styles.fabWrapper}>
@@ -459,70 +600,134 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 
-  // ── Glass card shared highlight ──
-  cardTopHighlight: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.09)",
-    borderRadius: 999,
+  // ── 4 Quick buttons ──
+  quickBtnsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  quickBtn: {
+    flex: 1,
+  },
+  quickBtnCard: {
+    backgroundColor: "#181a1a",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    gap: 8,
+  },
+  quickBtnLabel: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 11,
+    fontWeight: "500",
   },
 
-  // ── Quick actions (Ingreso / Gasto) ──
-  quickActionsCard: {
-    flexDirection: "row",
-    backgroundColor: "#0D0D14",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    paddingVertical: 22,
-    paddingHorizontal: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    elevation: 6,
-    overflow: "hidden",
+  // ── Daily spending card ──
+  spendingCard: {
+    backgroundColor: "#181a1a",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
   },
-  quickActionBtn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 11,
-  },
-  quickActionDivider: {
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    marginVertical: 8,
-  },
-  quickActionIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quickActionLabel: {
-    color: "#FFFFFF",
-    fontSize: 13,
+  spendingTitle: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
     fontWeight: "600",
-    letterSpacing: -0.1,
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  spendingAmount: {
+    color: "#FFFFFF",
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    marginBottom: 16,
+  },
+  spendingBarWrap: {
+    flexDirection: "row",
+    height: 10,
+    gap: 3,
+    marginBottom: 10,
+  },
+  spendingSegment: {
+    height: 10,
+    borderRadius: 5,
+    minWidth: 8,
+  },
+  spendingSegmentEmpty: {
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#2a2a2a",
+  },
+  segTooltip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: "#242424",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 10,
+  },
+  segTooltipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  segTooltipName: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  segTooltipAmount: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  segTooltipPct: {
+    fontSize: 11,
+    fontWeight: "800",
+    marginLeft: 2,
+  },
+  spendingLegend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  spendingLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  spendingLegendDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  spendingLegendText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  spendingEmpty: {
+    color: "rgba(255,255,255,0.25)",
+    fontSize: 13,
+    marginTop: 4,
   },
 
   // ── Goal card ──
   goalCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0D0D14",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    padding: 16,
+    backgroundColor: "#181a1a",
+    borderRadius: 14,
+    padding: 12,
     marginTop: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.40,
+    shadowOpacity: 0.45,
     shadowRadius: 12,
     elevation: 5,
     overflow: "hidden",
@@ -559,7 +764,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     overflow: "hidden",
     marginTop: 8,
-    backgroundColor: "#1C1C2A",
+    backgroundColor: "#222222",
   },
   goalBarFill: {
     height: "100%",
@@ -653,5 +858,42 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 6,
+  },
+
+  // ── More menu ──
+  moreBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  moreCard: {
+    position: "absolute",
+    zIndex: 51,
+    backgroundColor: "#222222",
+    borderRadius: 14,
+    overflow: "hidden",
+    minWidth: 210,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  moreItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  moreItemText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  moreDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginHorizontal: 12,
   },
 });

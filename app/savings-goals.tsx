@@ -9,6 +9,7 @@ import { Text } from "@/components/text";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   FadeInDown,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
@@ -124,8 +125,8 @@ function DraggableGoalItem({
     .onStart(() => {
       dragFrom.value = listIndex;
       dragDY.value = 0;
-      onDragStart();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      runOnJS(onDragStart)();
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
     })
     .onUpdate((e) => {
       dragDY.value = e.translationY;
@@ -133,7 +134,7 @@ function DraggableGoalItem({
     .onEnd(() => {
       const from = dragFrom.value;
       const to = Math.max(0, Math.min(totalItems - 1, Math.round(from + dragDY.value / ITEM_H)));
-      onDragEnd(from, to);
+      runOnJS(onDragEnd)(from, to);
     });
 
   const animStyle = useAnimatedStyle(() => {
@@ -195,8 +196,9 @@ function GoalCard({
   const accentColor = isComplete ? "#22C55E" : goal.color;
 
   return (
-    <Pressable style={[styles.card, { borderLeftColor: accentColor }]} onPress={onPress} onLongPress={onDelete}>
-      <View style={{ height: 3, backgroundColor: accentColor, borderRadius: 2, marginBottom: 14 }} />
+    <Pressable style={styles.card} onPress={onPress} onLongPress={onDelete}>
+      {/* Left accent stripe */}
+      <View style={[styles.leftStripe, { backgroundColor: accentColor }]} />
 
       <View style={styles.cardHeader}>
         <View style={[styles.cardIcon, { backgroundColor: accentColor + "20" }]}>
@@ -366,21 +368,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   card: {
-    backgroundColor: "#111318",
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#1E2128",
+    backgroundColor: "#181a1a",
+    borderRadius: 14,
+    padding: 14,
+    paddingLeft: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 6,
+    overflow: "hidden",
+  },
+  leftStripe: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 10,
     gap: 12,
   },
   cardIcon: {
@@ -412,9 +423,9 @@ const styles = StyleSheet.create({
     color: "#22C55E",
   },
   progressTrack: {
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#1E2530",
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "#2a2a2a",
     overflow: "hidden",
     marginBottom: 10,
   },

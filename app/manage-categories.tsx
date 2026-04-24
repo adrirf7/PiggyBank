@@ -54,7 +54,7 @@ export default function ManageCategoriesScreen() {
   const indicatorX = useSharedValue(0);
   const indicatorColorProgress = useSharedValue(activeType === "income" ? 1 : 0);
 
-  const cardBg = "#1E293B";
+  const cardBg = "#181a1a";
   const activeColor = activeType === "income" ? INCOME_COLOR : EXPENSE_COLOR;
   const isEditing = !!editor.id;
   const selectorPillWidth = typeSelectorWidth > 8 ? (typeSelectorWidth - 8) / FILTERS.length : 0;
@@ -409,7 +409,7 @@ export default function ManageCategoriesScreen() {
                       key={category.id}
                       className="px-4 py-3.5 flex-row items-center"
                       style={{
-                        backgroundColor: selected ? "#334155" : "transparent",
+                        backgroundColor: selected ? "#2a2a2a" : "transparent",
                         borderWidth: selectionMode ? 1 : 0,
                         borderColor: selected ? "#EF4444" : "transparent",
                       }}
@@ -440,7 +440,7 @@ export default function ManageCategoriesScreen() {
           <Animated.View entering={FadeInDown.duration(220)}>
             <Pressable
               className="absolute bottom-8 left-6 right-6 rounded-2xl py-4 items-center justify-center"
-              style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : "#334155" }]}
+              style={[styles.fab, { backgroundColor: selectedIds.length > 0 ? "#EF4444" : "#2a2a2a" }]}
               disabled={selectedIds.length === 0}
               onPress={handleDeleteSelected}
             >

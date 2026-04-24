@@ -30,14 +30,28 @@ interface Props {
   categoriesById?: Map<string, Category>;
 }
 
-function getRecurrenceLabel(recurrence?: string): string {
-  switch (recurrence) {
-    case "daily":   return "Diario";
-    case "weekly":  return "Semanal";
-    case "monthly": return "Mensual";
-    case "quarterly": return "Trimestral";
-    case "yearly":  return "Anual";
-    default:        return "";
+const WEEK_DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function getRecurrenceLabel(transaction: Transaction): string {
+  switch (transaction.recurrence) {
+    case "daily":
+      return "Diario";
+    case "weekly": {
+      const day = transaction.recurrenceWeekDay != null ? WEEK_DAYS[transaction.recurrenceWeekDay] : null;
+      return day ? `Semanal · ${day}` : "Semanal";
+    }
+    case "monthly": {
+      const d = transaction.recurrenceMonthDay;
+      return d != null ? `Mensual · día ${d}` : "Mensual";
+    }
+    case "quarterly": {
+      const d = transaction.recurrenceMonthDay;
+      return d != null ? `Trimestral · día ${d}` : "Trimestral";
+    }
+    case "yearly":
+      return "Anual";
+    default:
+      return "";
   }
 }
 
@@ -55,7 +69,7 @@ function TransactionItem({
 }: Props) {
   const { userProfile } = useAuth();
   const isIncome = transaction.type === "income";
-  const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
+  const recurrenceLabel = getRecurrenceLabel(transaction);
   const shakeRotation = useSharedValue(0);
   const pulseScale = useSharedValue(1);
 
@@ -79,14 +93,15 @@ function TransactionItem({
 
   const timeStr = useMemo(() => {
     try {
-      return new Date(transaction.date).toLocaleTimeString("es-ES", {
+      const source = transaction.createdAt ?? transaction.date + "T12:00:00";
+      return new Date(source).toLocaleTimeString("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
       });
     } catch {
       return "";
     }
-  }, [transaction.date]);
+  }, [transaction.createdAt, transaction.date]);
 
   useEffect(() => {
     if (selectable && selected) {
@@ -138,12 +153,12 @@ function TransactionItem({
               : undefined
         }
       >
-        {/* Top-edge glass highlight */}
-        <View style={styles.topHighlight} pointerEvents="none" />
+        {/* Left accent stripe */}
+        <View style={[styles.leftStripe, { backgroundColor: displayColor }]} pointerEvents="none" />
 
-        {/* Category icon bubble */}
-        <View style={[styles.iconBubble, { backgroundColor: displayColor + "22" }]}>
-          <CategoryIcon icon={displayIcon} size={20} color={displayColor} />
+        {/* Category icon */}
+        <View style={styles.iconBubble}>
+          <CategoryIcon icon={displayIcon} size={22} color={displayColor} />
         </View>
 
         {/* Content */}
@@ -188,34 +203,31 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-    marginBottom: 6,
-    backgroundColor: "#0D0D14",
+    paddingLeft: 20,
+    paddingRight: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: "#181a1a",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.30,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.40,
+    shadowRadius: 8,
+    elevation: 4,
     overflow: "hidden",
   },
-  cardBorder: {
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  topHighlight: {
+  cardBorder: {},
+  leftStripe: {
     position: "absolute",
-    top: 0,
     left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
   },
   iconBubble: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 28,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -225,14 +237,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: -0.1,
   },
   sub: {
     fontSize: 11,
-    color: "#606070",
+    color: "#666070",
     fontWeight: "500",
   },
   recurrencePill: {
@@ -255,7 +267,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   amount: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
     letterSpacing: -0.3,
   },

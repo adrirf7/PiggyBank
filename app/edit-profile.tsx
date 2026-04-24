@@ -80,7 +80,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  const cardBg = "#1E293B";
+  const cardBg = "#181a1a";
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>

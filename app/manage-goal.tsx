@@ -62,7 +62,7 @@ export default function ManageGoalScreen() {
     );
   }
 
-  const cardBg = "#1E293B";
+  const cardBg = "#181a1a";
   const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
   const isComplete = percent >= 100;
   const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
@@ -187,7 +187,7 @@ export default function ManageGoalScreen() {
             </View>
 
             {/* Progress bar */}
-            <View className="h-3 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#334155" }}>
+            <View className="h-3 rounded-full overflow-hidden mb-3" style={{ backgroundColor: "#2a2a2a" }}>
               <View className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: isComplete ? "#22C55E" : goal.color }} />
             </View>
 
@@ -230,7 +230,7 @@ export default function ManageGoalScreen() {
             </Pressable>
             <Pressable
               className="flex-1 py-3.5 rounded-2xl items-center flex-row justify-center gap-2"
-              style={{ backgroundColor: "#334155", ...styles.actionBtn }}
+              style={{ backgroundColor: "#2a2a2a", ...styles.actionBtn }}
               onPress={handleRemoveMoney}
             >
               <Ionicons name="remove-circle-outline" size={20} color={colors.text} />
@@ -240,7 +240,7 @@ export default function ManageGoalScreen() {
           {goal.currentAmount > 0 && (
             <Pressable
               className="py-3 rounded-2xl items-center flex-row justify-center gap-2"
-              style={{ backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#EF4444", ...styles.card }}
+              style={{ backgroundColor: "#181a1a", borderWidth: 1, borderColor: "#EF4444", ...styles.card }}
               onPress={handleRemoveAll}
             >
               <Ionicons name="cash-outline" size={18} color="#EF4444" />
@@ -319,7 +319,7 @@ function RecurringContributionItem({
   const recurrenceLabel = getRecurrenceLabel(transaction.recurrence);
 
   return (
-    <Animated.View entering={FadeInDown.duration(400)} style={!isFirst ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}>
+    <Animated.View entering={FadeInDown.duration(400)} style={!isFirst ? { borderTopWidth: 1, borderTopColor: "#2a2a2a" } : {}}>
       <Pressable
         className="p-4 flex-row items-center justify-between active:opacity-70"
         style={{
@@ -371,7 +371,7 @@ function TransactionItem({
   const isAdd = transaction.type === "income";
 
   return (
-    <View className="p-3.5 flex-row items-center" style={[!isFirst && { borderTopWidth: 1, borderTopColor: "#334155" }, styles.txCard]}>
+    <View className="p-3.5 flex-row items-center" style={[!isFirst && { borderTopWidth: 1, borderTopColor: "#2a2a2a" }, styles.txCard]}>
       <View className="w-9 h-9 rounded-full items-center justify-center mr-3" style={{ backgroundColor: goal.color + "20" }}>
         <Ionicons name={goal.icon as any} size={18} color={goal.color} />
       </View>

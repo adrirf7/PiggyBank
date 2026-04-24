@@ -40,7 +40,7 @@ export default function AddGoalScreen() {
   const { alert } = useAlert();
   const { goalId } = useLocalSearchParams<{ goalId?: string }>();
   const { goals, addGoal, updateGoal } = useSavingsGoalStore();
-  const cardBg = "#1E293B";
+  const cardBg = "#181a1a";
   const currencySymbol = getCurrencySymbol(userProfile?.currencyCode ?? "EUR");
 
   const existing = goalId ? goals.find((g) => g.id === goalId) : undefined;
@@ -221,7 +221,7 @@ export default function AddGoalScreen() {
                   key={icon}
                   className="w-12 h-12 rounded-xl items-center justify-center"
                   style={{
-                    backgroundColor: selectedIcon === icon ? selectedColor + "20" : "#334155",
+                    backgroundColor: selectedIcon === icon ? selectedColor + "20" : "#2a2a2a",
                     borderWidth: selectedIcon === icon ? 2 : 0,
                     borderColor: selectedIcon === icon ? selectedColor : "transparent",
                   }}

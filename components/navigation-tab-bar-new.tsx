@@ -22,7 +22,7 @@ export function NavigationTabBar() {
   const colors = Colors.dark;
   const insets = useSafeAreaInsets();
 
-  const tabBarHeight = Platform.OS === "ios" ? 62 : 58;
+  const tabBarHeight = Platform.OS === "ios" ? 52 : 48;
   const tabBarBottom = Platform.OS === "ios" ? Math.max(insets.bottom, 20) : 16;
   const tabBarTotalHeight = tabBarHeight + (Platform.OS !== "ios" ? insets.bottom : 0);
 
@@ -90,7 +90,7 @@ export function NavigationTabBar() {
           styles.tabBar,
           {
             height: tabBarTotalHeight,
-            paddingBottom: Platform.OS === "ios" ? 10 : 6 + insets.bottom,
+            paddingBottom: Platform.OS === "ios" ? 8 : 4 + insets.bottom,
             bottom: tabBarBottom,
           },
         ]}
@@ -121,13 +121,10 @@ export function NavigationTabBar() {
                     </View>
                   </Pressable>
                 ) : (
-                  <Pressable onPress={() => router.push(tab.href)} style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2 }}>
-                    <Ionicons name={isActive && tab.iconFilled ? (tab.iconFilled as any) : (tab.icon as any)} size={21} color={isActive ? PRIMARY : "#3A3A3A"} />
-                    {tab.title && (
-                      <View style={[styles.label, { color: isActive ? PRIMARY : "#3A3A3A" }]}>
-                        <Ionicons name="text" size={0} color={isActive ? PRIMARY : "#3A3A3A"} />
-                      </View>
-                    )}
+                  <Pressable onPress={() => router.push(tab.href)} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                    <View style={isActive ? styles.activeBubble : undefined}>
+                      <Ionicons name={isActive && tab.iconFilled ? (tab.iconFilled as any) : (tab.icon as any)} size={20} color="#FFFFFF" />
+                    </View>
                   </Pressable>
                 )}
               </View>
@@ -141,7 +138,7 @@ export function NavigationTabBar() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: "rgba(5,5,5,0.97)",
+    backgroundColor: "rgba(0,0,0,0.82)",
     borderTopColor: "transparent",
     borderTopWidth: 0,
     position: "absolute",
@@ -159,26 +156,27 @@ const styles = StyleSheet.create({
   tabBarContent: {
     flex: 1,
     flexDirection: "row",
-    paddingTop: 8,
+    paddingTop: 6,
     paddingHorizontal: 8,
   },
   addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 10,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: "500",
-    letterSpacing: 0.3,
+  activeBubble: {
+    backgroundColor: "#181a1a",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
 });

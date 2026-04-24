@@ -81,7 +81,7 @@ export default function ProfileScreen() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "transparent" }}>
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* ── Header ── */}
-        <LinearGradient colors={["#0D1828", "#060A14"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <LinearGradient colors={["#1e1e1e", "#000000"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <View style={styles.circle1} />
           <View style={styles.circle2} />
           <Animated.View entering={FadeInDown.duration(400).delay(0)} style={styles.profileWrap}>
@@ -139,25 +139,6 @@ export default function ProfileScreen() {
           <InfoRow icon="mail-outline" label="Correo electrónico" value={user?.email ?? "—"} colors={colors} />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <InfoRow icon="person-outline" label="Nombre" value={user?.displayName ?? "No especificado"} colors={colors} />
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.duration(400).delay(185)} style={[styles.section, { backgroundColor: cardBg }]}>
-          <Text style={[styles.sectionTitle, { color: colors.muted }]}>Categorías</Text>
-          <Pressable
-            style={[styles.manageCategoriesBtn, { borderColor: colors.border, backgroundColor: colors.buttonSecondary }]}
-            onPress={() => router.push("/manage-categories")}
-          >
-            <View style={styles.manageCategoriesLeft}>
-              <View style={[styles.infoIcon, { backgroundColor: PRIMARY + "15" }]}>
-                <Ionicons name="pricetags-outline" size={17} color={PRIMARY} />
-              </View>
-              <View>
-                <Text style={[styles.manageCategoriesTitle, { color: colors.text }]}>Gestionar categorías</Text>
-                <Text style={[styles.manageCategoriesSubtitle, { color: colors.muted }]}>Crear, editar y borrar tus categorías personalizadas</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-          </Pressable>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(400).delay(198)} style={[styles.section, { backgroundColor: cardBg }]}>
@@ -274,27 +255,27 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", marginHorizontal: 20, marginTop: 20, gap: 12 },
   statCard: {
     flex: 1,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.40,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  statValue: { fontSize: 16, fontWeight: "800", marginBottom: 4 },
+  statValue: { fontSize: 17, fontWeight: "800", marginBottom: 4 },
   statLabel: { fontSize: 11, textAlign: "center" },
   summaryCard: {
     marginHorizontal: 20,
     marginTop: 12,
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.40,
+    shadowRadius: 10,
+    elevation: 4,
   },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4 },
   summaryLabel: { fontSize: 13 },
@@ -302,32 +283,20 @@ const styles = StyleSheet.create({
   divider: { height: 1, marginVertical: 10 },
   section: {
     marginHorizontal: 20,
-    marginTop: 16,
-    borderRadius: 18,
-    padding: 16,
+    marginTop: 12,
+    borderRadius: 14,
+    padding: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.40,
+    shadowRadius: 10,
+    elevation: 4,
   },
   sectionTitle: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   infoIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   infoLabel: { fontSize: 11, marginBottom: 2 },
   infoValue: { fontSize: 14, fontWeight: "500" },
-  manageCategoriesBtn: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  manageCategoriesLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 8 },
-  manageCategoriesTitle: { fontSize: 14, fontWeight: "700" },
-  manageCategoriesSubtitle: { fontSize: 11, marginTop: 1 },
   currencyOptions: {
     flexDirection: "row",
     flexWrap: "wrap",

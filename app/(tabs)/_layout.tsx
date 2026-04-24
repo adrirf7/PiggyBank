@@ -4,12 +4,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { withLayoutContext } from "expo-router";
 import React, { useEffect } from "react";
 import { Dimensions, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Text } from "@/components/text";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
+import { Text } from "@/components/text";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPEABLE = ["index", "transactions", "analytics", "profile"];
@@ -39,7 +39,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
 
   useEffect(() => {
     activeIndex.value = swipeableIndex;
-    translateX.value = withSpring(-swipeableIndex * SCREEN_WIDTH, { damping: 28, stiffness: 240, mass: 0.8 });
+    translateX.value = withSpring(-swipeableIndex * SCREEN_WIDTH, { damping: 32, stiffness: 200, mass: 0.7 });
   }, [swipeableIndex]);
 
   const navigateTo = (idx: number) => {
@@ -66,7 +66,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
       else if ((e.translationX > threshold || velocity > 600) && next > 0) next -= 1;
 
       activeIndex.value = next;
-      translateX.value = withSpring(-next * SCREEN_WIDTH, { damping: 28, stiffness: 240, mass: 0.8 });
+      translateX.value = withSpring(-next * SCREEN_WIDTH, { damping: 32, stiffness: 200, mass: 0.7 });
 
       if (next !== swipeableIndex) runOnJS(navigateTo)(next);
     });
@@ -76,7 +76,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
   }));
 
   // Tab bar layout
-  const tabBarHeight = Platform.OS === "ios" ? 62 : 58;
+  const tabBarHeight = Platform.OS === "ios" ? 58 : 54;
   const tabBarBottom = Platform.OS === "ios" ? Math.max(insets.bottom, 20) : 16;
   const tabBarTotalHeight = tabBarHeight + (Platform.OS !== "ios" ? insets.bottom : 0);
   const pillBottom = tabBarBottom + 20;
@@ -85,17 +85,22 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
     const route = swipeableRoutes[tabIdx];
     if (!route) return;
     const isFocused = swipeableIndex === tabIdx;
+    if (isFocused) return;
+    // Animate immediately on press, navigate in parallel
+    activeIndex.value = tabIdx;
+    translateX.value = withSpring(-tabIdx * SCREEN_WIDTH, { damping: 32, stiffness: 200, mass: 0.7 });
     const event = (navigation as any).emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-    if (!isFocused && !event.defaultPrevented) (navigation as any).navigate(route.name);
+    if (!event.defaultPrevented) (navigation as any).navigate(route.name);
   };
 
   const renderTab = (item: (typeof TAB_ITEMS)[number], tabIdx: number) => {
     const isFocused = swipeableIndex === tabIdx;
-    const color = isFocused ? PRIMARY : "#3A3A3A";
     return (
       <TouchableOpacity key={item.name} style={styles.tabItem} onPress={() => handleTabPress(tabIdx)} activeOpacity={0.7}>
-        <Ionicons name={isFocused ? item.iconFocused : item.icon} size={item.size} color={color} />
-        <Text style={[styles.tabLabel, { color }]}>{item.title}</Text>
+        <View style={[styles.bubble, isFocused && styles.activeBubble]}>
+          <Ionicons name={isFocused ? item.iconFocused : item.icon} size={item.size} color="#FFFFFF" />
+          <Text style={[styles.tabLabel, { color: isFocused ? "#FFFFFF" : "#666670" }]}>{item.title}</Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -105,23 +110,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
       <View style={{ flex: 1, overflow: "hidden" }}>
 
         {/* ── Fondo estático global (se renderiza una vez, el contenido desliza encima) ── */}
-        <View style={StyleSheet.absoluteFillObject}>
-          <LinearGradient
-            colors={["#1A1A1A", "#111111", "#0A0A0A"]}
-            locations={[0, 0.5, 1]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-          {/* Rayos de luz */}
-          <View pointerEvents="none" style={styles.raysContainer}>
-            <LinearGradient colors={["rgba(93,168,255,0.26)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "5%",  width: 38, transform: [{ rotate: "-22deg" }] }]} />
-            <LinearGradient colors={["rgba(93,168,255,0.12)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "21%", width: 22, transform: [{ rotate: "-13deg" }] }]} />
-            <LinearGradient colors={["rgba(93,168,255,0.21)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "40%", width: 54, transform: [{ rotate: "-4deg"  }] }]} />
-            <LinearGradient colors={["rgba(93,168,255,0.10)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "62%", width: 28, transform: [{ rotate: "10deg"  }] }]} />
-            <LinearGradient colors={["rgba(93,168,255,0.23)", "transparent"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={[styles.ray, { left: "76%", width: 44, transform: [{ rotate: "21deg"  }] }]} />
-          </View>
-        </View>
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000" }]} />
 
         {/* ── Pager (solo el contenido desliza) ── */}
         <GestureDetector gesture={panGesture}>
@@ -136,7 +125,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
 
         {/* Gradient */}
         <LinearGradient
-          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.92)"]}
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.95)"]}
           pointerEvents="none"
           style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, zIndex: 5 }}
         />
@@ -145,7 +134,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
         <View
           style={[
             styles.pill,
-            { bottom: pillBottom, height: tabBarTotalHeight, paddingBottom: Platform.OS === "ios" ? 10 : 6 + insets.bottom },
+            { bottom: pillBottom, height: tabBarTotalHeight, paddingBottom: Platform.OS === "ios" ? 6 : 4 + insets.bottom },
           ]}
         >
           {TAB_ITEMS.map((item, i) => renderTab(item, i))}
@@ -173,28 +162,15 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  raysContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  ray: {
-    position: "absolute",
-    top: -60,
-    height: "55%",
-    borderRadius: 30,
-  },
   pill: {
     position: "absolute",
     left: 20,
     right: 20,
-    backgroundColor: "rgba(5,5,5,0.97)",
+    backgroundColor: "rgba(0,0,0,0.92)",
     borderRadius: 30,
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 8,
+    paddingTop: 6,
     elevation: 24,
     zIndex: 10,
     shadowColor: "#000000",
@@ -206,12 +182,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
+  },
+  bubble: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  activeBubble: {
+    backgroundColor: "rgba(255,255,255,0.13)",
   },
   tabLabel: {
     fontSize: 10,
     fontWeight: "500",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
 });

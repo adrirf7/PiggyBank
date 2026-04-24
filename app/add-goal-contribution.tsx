@@ -97,7 +97,7 @@ export default function AddGoalContributionScreen() {
     }
   }, [isEditing, editingTransaction]);
 
-  const cardBg = "#1E293B";
+  const cardBg = "#181a1a";
   const activeColor = type === "add" ? "#22C55E" : "#EF4444";
   const currencySymbol = getCurrencySymbol(userProfile?.currencyCode ?? "EUR");
 
@@ -361,7 +361,7 @@ export default function AddGoalContributionScreen() {
                   <View key={option.key}>
                     <Pressable
                       className="px-4 py-3.5 flex-row items-center justify-between"
-                      style={idx > 0 ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}
+                      style={idx > 0 ? { borderTopWidth: 1, borderTopColor: "#2a2a2a" } : {}}
                       onPress={() => handleRecurrenceChange(option.key)}
                     >
                       <View className="flex-row items-center gap-x-3 flex-1">

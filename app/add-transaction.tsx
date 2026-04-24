@@ -51,6 +51,7 @@ export default function AddTransactionScreen() {
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
   const [selectedWeekDay, setSelectedWeekDay] = useState<number | null>(null);
   const [selectedMonthDay, setSelectedMonthDay] = useState<number | null>(null);
+  const [selectedPickerMonth, setSelectedPickerMonth] = useState<number>(new Date().getMonth());
   const [isSaving, setIsSaving] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const existingTransaction = transactionId ? transactions.find((tx) => tx.id === transactionId) : undefined;
@@ -81,7 +82,7 @@ export default function AddTransactionScreen() {
 
   const activeColor = type === "income" ? INCOME_COLOR : EXPENSE_COLOR;
   const categories = type === "income" ? incomeCategories : expenseCategories;
-  const cardBg = "#1E293B";
+  const cardBg = "#181a1a";
   const currencySymbol = getCurrencySymbol(userProfile?.currencyCode ?? "EUR");
 
   useEffect(() => {
@@ -331,7 +332,7 @@ export default function AddTransactionScreen() {
                 <View key={option.key}>
                   <Pressable
                     className="px-4 py-3.5 flex-row items-center justify-between"
-                    style={idx > 0 ? { borderTopWidth: 1, borderTopColor: "#334155" } : {}}
+                    style={idx > 0 ? { borderTopWidth: 1, borderTopColor: "#2a2a2a" } : {}}
                     onPress={() => handleRecurrenceChange(option.key)}
                   >
                     <View className="flex-row items-center gap-x-3 flex-1">
@@ -392,8 +393,34 @@ export default function AddTransactionScreen() {
                 layout={Layout.springify()}
               >
                 <Text className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">Selecciona un día del mes</Text>
+                {/* Month selector */}
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <Pressable
+                    onPress={() => {
+                      const prev = (selectedPickerMonth + 11) % 12;
+                      const days = new Date(2024, prev + 1, 0).getDate();
+                      if (selectedMonthDay !== null && selectedMonthDay > days) setSelectedMonthDay(days);
+                      setSelectedPickerMonth(prev);
+                    }}
+                    style={{ padding: 6 }}
+                  >
+                    <Ionicons name="chevron-back" size={18} color={colors.text} />
+                  </Pressable>
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{MONTHS[selectedPickerMonth]}</Text>
+                  <Pressable
+                    onPress={() => {
+                      const next = (selectedPickerMonth + 1) % 12;
+                      const days = new Date(2024, next + 1, 0).getDate();
+                      if (selectedMonthDay !== null && selectedMonthDay > days) setSelectedMonthDay(days);
+                      setSelectedPickerMonth(next);
+                    }}
+                    style={{ padding: 6 }}
+                  >
+                    <Ionicons name="chevron-forward" size={18} color={colors.text} />
+                  </Pressable>
+                </View>
                 <View className="flex-row flex-wrap gap-2 justify-center">
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  {Array.from({ length: new Date(2024, selectedPickerMonth + 1, 0).getDate() }, (_, i) => i + 1).map((day) => (
                     <Pressable
                       key={day}
                       className="py-2 rounded-lg items-center justify-center"
