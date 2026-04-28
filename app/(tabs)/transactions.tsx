@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import TransactionItem from "@/components/transaction-item";
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useTabScrollY } from "@/context/tab-scroll";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
 import { useSavingsGoalStore } from "@/store/use-savings-goals";
@@ -56,6 +57,7 @@ export default function TransactionsScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const listRef = useRef<FlatList<any>>(null);
   const handledFocusKeyRef = useRef<string | null>(null);
+  const tabScrollY = useTabScrollY();
   const [filterSlideDirection, setFilterSlideDirection] = useState<"left" | "right">("left");
   const [highlightedTransactionId, setHighlightedTransactionId] = useState<string | null>(null);
   const focusKey = useMemo(() => (focusTransactionId ? `${focusTransactionId}:${focusNonce ?? "default"}` : null), [focusTransactionId, focusNonce]);
@@ -380,6 +382,8 @@ export default function TransactionsScreen() {
             ref={listRef}
             data={flatFilteredTransactions}
             keyExtractor={(item) => item.id}
+            onScroll={(e) => { tabScrollY.value = e.nativeEvent.contentOffset.y; }}
+            scrollEventThrottle={16}
             initialNumToRender={10}
             maxToRenderPerBatch={8}
             windowSize={7}

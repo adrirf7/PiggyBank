@@ -2,7 +2,7 @@ import { createNavigatorFactory, TabRouter, useNavigationBuilder } from "@react-
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { withLayoutContext } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Dimensions, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, PRIMARY } from "@/constants/theme";
 import { Text } from "@/components/text";
+import { useTabScrollY } from "@/context/tab-scroll";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPEABLE = ["index", "transactions", "analytics", "profile"];
@@ -24,6 +25,7 @@ const TAB_ITEMS = [
 function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
   const insets = useSafeAreaInsets();
   const colors = Colors.dark;
+  const tabScrollY = useTabScrollY();
 
   const { state, navigation, descriptors, NavigationContent } = useNavigationBuilder(
     TabRouter as any,
@@ -33,6 +35,14 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
   const swipeableRoutes = state.routes.filter((r) => SWIPEABLE.includes(r.name));
   const currentRoute = state.routes[state.index];
   const swipeableIndex = Math.max(0, swipeableRoutes.findIndex((r) => r.key === currentRoute?.key));
+
+  const prevSwipeableIndex = useRef(swipeableIndex);
+  useEffect(() => {
+    if (prevSwipeableIndex.current !== swipeableIndex) {
+      tabScrollY.value = 0;
+      prevSwipeableIndex.current = swipeableIndex;
+    }
+  }, [swipeableIndex, tabScrollY]);
 
   const translateX = useSharedValue(-swipeableIndex * SCREEN_WIDTH);
   const activeIndex = useSharedValue(swipeableIndex);
@@ -99,7 +109,7 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
       <TouchableOpacity key={item.name} style={styles.tabItem} onPress={() => handleTabPress(tabIdx)} activeOpacity={0.7}>
         <View style={[styles.bubble, isFocused && styles.activeBubble]}>
           <Ionicons name={isFocused ? item.iconFocused : item.icon} size={item.size} color="#FFFFFF" />
-          <Text style={[styles.tabLabel, { color: isFocused ? "#FFFFFF" : "#666670" }]}>{item.title}</Text>
+          <Text numberOfLines={1} style={[styles.tabLabel, { color: isFocused ? "#FFFFFF" : "#666670" }]}>{item.title}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -107,23 +117,22 @@ function SwipeTabNavigator({ children, screenOptions, initialRouteName }: any) {
 
   return (
     <NavigationContent>
-      <View style={{ flex: 1, overflow: "hidden" }}>
+      <View style={{ flex: 1 }}>
 
-        {/* ── Fondo estático global (se renderiza una vez, el contenido desliza encima) ── */}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000" }]} />
+        {/* ── Pager ── */}
+        <View style={[StyleSheet.absoluteFillObject, { overflow: "hidden" }]}>
+          <GestureDetector gesture={panGesture}>
+            <Animated.View style={[{ flex: 1, flexDirection: "row", width: SCREEN_WIDTH * swipeableRoutes.length }, animatedStyle]}>
+              {swipeableRoutes.map((route) => (
+                <View key={route.key} style={{ width: SCREEN_WIDTH, flex: 1 }}>
+                  {descriptors[route.key].render()}
+                </View>
+              ))}
+            </Animated.View>
+          </GestureDetector>
+        </View>
 
-        {/* ── Pager (solo el contenido desliza) ── */}
-        <GestureDetector gesture={panGesture}>
-          <Animated.View style={[{ flex: 1, flexDirection: "row", width: SCREEN_WIDTH * swipeableRoutes.length }, animatedStyle]}>
-            {swipeableRoutes.map((route) => (
-              <View key={route.key} style={{ width: SCREEN_WIDTH, flex: 1, overflow: "hidden" }}>
-                {descriptors[route.key].render()}
-              </View>
-            ))}
-          </Animated.View>
-        </GestureDetector>
-
-        {/* Gradient */}
+        {/* Bottom fade */}
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.95)"]}
           pointerEvents="none"
@@ -170,7 +179,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 6,
     elevation: 24,
     zIndex: 10,
     shadowColor: "#000000",
@@ -182,14 +190,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 6,
   },
   bubble: {
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "column",
     gap: 3,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "transparent",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    overflow: "hidden",
   },
   activeBubble: {
     backgroundColor: "rgba(255,255,255,0.13)",

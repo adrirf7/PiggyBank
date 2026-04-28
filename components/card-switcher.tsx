@@ -1,13 +1,16 @@
-import { getCardTheme } from "@/constants/card-themes";
 import { PRIMARY } from "@/constants/theme";
 import { Account } from "@/types";
+import { getCurrencySymbol } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Dimensions, FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { Text } from "@/components/text";
-import Animated, { Extrapolation, SharedValue, interpolate, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-import { BankCard, BankCardSkeleton } from "./bank-card";
+
+// Exported so the tab navigator can waitFor this gesture before activating its
+// own pan — this lets the FlatList win the gesture competition on Android.
+export const accountSliderNativeGesture = Gesture.Native();
 
 export interface CardData {
   account: Account;
@@ -28,249 +31,296 @@ interface Props {
   isLoading?: boolean;
 }
 
-// Visible strip of each card when cards are superposed
-const STACK_VISIBLE = 56;
-const ADD_BTN_H = 52;
-// Lower damping = more elastic bounce at the end of the spring animation
-const SPRING = { damping: 20, stiffness: 200, mass: 0.95 };
-const CARD_H_ESTIMATE = 248;
+const SCREEN_W = Dimensions.get("window").width;
+// Each page width = full screen (the FlatList is laid out edge-to-edge inside
+// the section container, so we measure via onLayout instead of using margins)
+const DOT_SIZE = 6;
+const DOT_GAP = 6;
 
-// ── Stacked card that fans out from behind when expanded ─────────────────────
-interface StackedCardProps {
+// ── Single account page ───────────────────────────────────────────────────────
+interface PageProps {
   card: CardData;
-  index: number;
-  totalOtherCards: number;
-  expanded: boolean;
-  expandProgress: SharedValue<number>;
-  onSelect: () => void;
+  width: number;
   currencyCode?: string;
-  userName?: string;
-  userCountry?: string;
+  onAccountsPress: () => void;
 }
 
-function StackedCard({ card, index, totalOtherCards, expanded, expandProgress, onSelect, currencyCode, userName, userCountry }: StackedCardProps) {
-  const theme = getCardTheme(card.account.themeId);
+function AccountPage({ card, width, currencyCode, onAccountsPress }: PageProps) {
+  const code = currencyCode ?? "EUR";
+  const symbol = getCurrencySymbol(code);
 
-  const style = useAnimatedStyle(() => {
-    const expandedTop = (totalOtherCards - index - 1) * STACK_VISIBLE;
-    // Each subsequent card appears slightly later (stagger by 0.08 per index)
-    const stagger = index * 0.08;
-    const opacityStart = stagger;
-    const opacityEnd = Math.min(0.4 + stagger, 0.75);
-    const scaleStart = stagger;
-    const scaleEnd = Math.min(0.65 + stagger, 0.92);
-    return {
-      top: interpolate(expandProgress.value, [0, 1], [0, expandedTop]),
-      opacity: interpolate(expandProgress.value, [opacityStart, opacityEnd], [0, 1], Extrapolation.CLAMP),
-      transform: [
-        // Scale in from 0.88 → 1 with stagger
-        { scale: interpolate(expandProgress.value, [scaleStart, scaleEnd], [0.88, 1], Extrapolation.CLAMP) },
-        // Rise up from 18px below → 0 with stagger
-        { translateY: interpolate(expandProgress.value, [opacityStart, opacityEnd], [18, 0], Extrapolation.CLAMP) },
-      ],
-      zIndex: 100 - index,
-    };
-  });
+  const formatted = new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(card.balance);
+
+  const commaIdx = formatted.lastIndexOf(",");
+  const intPart = commaIdx >= 0 ? formatted.slice(0, commaIdx) : formatted;
+  const centsPart = commaIdx >= 0 ? formatted.slice(commaIdx + 1) : "00";
 
   return (
-    <Animated.View pointerEvents={expanded ? "auto" : "none"} style={[{ position: "absolute", left: 0, right: 0 }, style]}>
-      <View style={styles.stackCardShadow}>
-        <Pressable onPress={onSelect} style={{ borderRadius: 24, overflow: "hidden" }}>
-          <BankCard
-            theme={theme}
-            accountName={card.account.name}
-            balance={card.balance}
-            totalIncome={card.totalIncome}
-            totalExpense={card.totalExpense}
-            totalSaved={card.totalSaved}
-            currencyCode={currencyCode}
-            accountIcon={card.account.icon}
-            userName={userName}
-            userCountry={userCountry}
-          />
-          <LinearGradient
-            pointerEvents="none"
-            colors={["rgba(0,0,0,0.38)", "rgba(0,0,0,0)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.stackShadowStrip}
-          />
-        </Pressable>
+    <View style={[styles.page, { width }]}>
+      {/* Account label */}
+      <Text style={styles.accountLabel}>
+        {card.account.name}
+        <Text style={styles.accountLabelDot}> · </Text>
+        {code}
+      </Text>
+
+      {/* Balance */}
+      <View style={styles.balanceRow}>
+        <Text style={styles.balanceInt}>{intPart}</Text>
+        {centsPart !== "00" && (
+          <Text style={styles.balanceCents}>.{centsPart}</Text>
+        )}
+        <Text style={styles.balanceSymbol}>{symbol}</Text>
       </View>
-    </Animated.View>
-  );
-}
 
-// ── Add account button ───────────────────────────────────────────────────────
-interface AddBtnProps {
-  expanded: boolean;
-  expandProgress: SharedValue<number>;
-  cardHeightSv: SharedValue<number>;
-  totalOtherCards: number;
-  onPress: () => void;
-}
-
-function AddAccountButton({ expanded, expandProgress, cardHeightSv, totalOtherCards, onPress }: AddBtnProps) {
-  const style = useAnimatedStyle(() => {
-    const h = cardHeightSv.value || CARD_H_ESTIMATE;
-    const cardsBlockHeight = totalOtherCards * STACK_VISIBLE;
-    return {
-      top: h + cardsBlockHeight + 10,
-      opacity: interpolate(expandProgress.value, [0.5, 1], [0, 1], Extrapolation.CLAMP),
-    };
-  });
-
-  return (
-    <Animated.View pointerEvents={expanded ? "auto" : "none"} style={[{ position: "absolute", left: 0, right: 0 }, style]}>
-      <Pressable style={styles.addBtn} onPress={onPress}>
-        <Ionicons name="add-circle-outline" size={18} color={PRIMARY} />
-        <Text style={[styles.addBtnText, { color: PRIMARY }]}>Gestionar Cuentas</Text>
+      {/* Accounts button */}
+      <Pressable style={styles.accountsBtn} onPress={onAccountsPress}>
+        <Text style={styles.accountsBtnText}>Cuentas</Text>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 
-// ── Main CardSwitcher ────────────────────────────────────────────────────────
-export function CardSwitcher({ cards, activeAccountId, onSelectAccount, onAddAccount, currencyCode, userName, userCountry, isLoading }: Props) {
-  const [expanded, setExpanded] = useState(false);
-  const expandProgress = useSharedValue(0);
-  const cardHeightSv = useSharedValue(CARD_H_ESTIMATE);
-
-  const activeCard = cards.find((c) => c.account.id === activeAccountId) ?? cards[0];
-  const otherCards = cards.filter((c) => c.account.id !== activeCard?.account.id);
-
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+export function BankCardSkeleton() {
+  const opacity = useSharedValue(0.35);
   useEffect(() => {
-    expandProgress.value = withSpring(expanded ? 1 : 0, SPRING);
-  }, [expanded, expandProgress]);
+    opacity.value = withSpring(0.7, { damping: 10, stiffness: 60 });
+  }, [opacity]);
+  const shimmer = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
-  // Collapse when active account changes externally.
-  // expanded intentionally omitted — including it would cause an infinite loop.
+  return (
+    <View style={styles.skeleton}>
+      <Animated.View style={[styles.skeletonLabel, shimmer]} />
+      <Animated.View style={[styles.skeletonBalance, shimmer]} />
+      <Animated.View style={[styles.skeletonBtn, shimmer]} />
+    </View>
+  );
+}
+
+// ── Main CardSwitcher ─────────────────────────────────────────────────────────
+export function CardSwitcher({
+  cards,
+  activeAccountId,
+  onSelectAccount,
+  onAddAccount,
+  currencyCode,
+  isLoading,
+}: Props) {
+  const flatRef = useRef<FlatList>(null);
+  const [containerW, setContainerW] = useState(SCREEN_W);
+
+  const activeIndex = Math.max(
+    0,
+    cards.findIndex((c) => c.account.id === activeAccountId),
+  );
+
+  // Scroll to active card when it changes externally
   useEffect(() => {
-    if (expanded) setExpanded(false);
-  }, [activeAccountId]);
+    if (cards.length === 0) return;
+    flatRef.current?.scrollToIndex({ index: activeIndex, animated: true });
+  }, [activeIndex, cards.length]);
 
-  const handleSelect = (id: string) => {
-    onSelectAccount(id);
-    setExpanded(false);
-  };
+  const handleScrollSettled = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const idx = Math.round(e.nativeEvent.contentOffset.x / containerW);
+      const card = cards[idx];
+      if (card && card.account.id !== activeAccountId) {
+        onSelectAccount(card.account.id);
+      }
+    },
+    [cards, containerW, activeAccountId, onSelectAccount],
+  );
 
-  const activeCardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(expandProgress.value, [0, 1], [0, otherCards.length * STACK_VISIBLE]) },
-      // Quick dip then recover — tactile "push" feel when tapping
-      { scale: interpolate(expandProgress.value, [0, 0.12, 0.5, 1], [1, 0.972, 0.985, 1]) },
-    ],
-  }));
+  if (isLoading) return <BankCardSkeleton />;
 
-  // Height: collapsed = card height only, expanded = card + stacked cards + button
-  const containerStyle = useAnimatedStyle(() => {
-    const h = cardHeightSv.value;
-    const n = otherCards.length;
-    const collapsedH = h;
-    const expandedCardsHeight = n * STACK_VISIBLE;
-    const expandedH = h + expandedCardsHeight + ADD_BTN_H + 14;
-    return {
-      height: interpolate(expandProgress.value, [0, 1], [collapsedH, expandedH]),
-    };
-  });
-
-  if (isLoading) {
-    return <BankCardSkeleton />;
-  }
-
-  if (!activeCard) {
+  if (cards.length === 0) {
     return (
-      <View>
-        <Pressable style={styles.addBtn} onPress={onAddAccount}>
-          <Ionicons name="add-circle-outline" size={18} color={PRIMARY} />
-          <Text style={[styles.addBtnText, { color: PRIMARY }]}>Gestionar Cuentas</Text>
-        </Pressable>
-      </View>
+      <Pressable style={styles.emptyBtn} onPress={onAddAccount}>
+        <Ionicons name="add-circle-outline" size={18} color={PRIMARY} />
+        <Text style={[styles.emptyBtnText, { color: PRIMARY }]}>Gestionar Cuentas</Text>
+      </Pressable>
     );
   }
 
-  const activeTheme = getCardTheme(activeCard.account.themeId);
-
   return (
-    <Animated.View style={containerStyle}>
-      {/* Active card */}
-      <Animated.View style={[{ zIndex: 1000, position: "relative" }, activeCardStyle]}>
-        <Pressable
-          onPress={() => setExpanded((v) => !v)}
-          onLayout={(e) => { cardHeightSv.value = e.nativeEvent.layout.height; }}
-          style={{ borderRadius: 24, overflow: "hidden" }}
-        >
-          <BankCard
-            theme={activeTheme}
-            accountName={activeCard.account.name}
-            balance={activeCard.balance}
-            totalIncome={activeCard.totalIncome}
-            totalExpense={activeCard.totalExpense}
-            totalSaved={activeCard.totalSaved}
-            currencyCode={currencyCode}
-            showBottomChevron
-            chevronExpanded={expanded}
-            accountIcon={activeCard.account.icon}
-            userName={userName}
-            userCountry={userCountry}
-          />
-        </Pressable>
-      </Animated.View>
+    <Animated.View entering={FadeIn.duration(300)} style={styles.root}>
+      {/* Swipeable pages — wrapped in GestureDetector so the tab navigator's
+          panGesture can waitFor this native gesture and yield to it. */}
+      <GestureDetector gesture={accountSliderNativeGesture}>
+        <FlatList
+          ref={flatRef}
+          data={cards}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(c) => c.account.id}
+          onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}
+          onScrollEndDrag={handleScrollSettled}
+          onMomentumScrollEnd={handleScrollSettled}
+          getItemLayout={(_, index) => ({
+            length: containerW,
+            offset: containerW * index,
+            index,
+          })}
+          renderItem={({ item }) => (
+            <AccountPage
+              card={item}
+              width={containerW}
+              currencyCode={currencyCode}
+              onAccountsPress={onAddAccount}
+            />
+          )}
+        />
+      </GestureDetector>
 
-      {/* Stacked other-account cards */}
-      {expanded &&
-        otherCards.map((card, idx) => (
-          <StackedCard
-            key={card.account.id}
-            card={card}
-            index={idx}
-            totalOtherCards={otherCards.length}
-            expanded={expanded}
-            expandProgress={expandProgress}
-            onSelect={() => handleSelect(card.account.id)}
-            currencyCode={currencyCode}
-            userName={userName}
-            userCountry={userCountry}
-          />
-        ))}
-
-      {/* Add account button (visible only when expanded) */}
-      {expanded && (
-        <AddAccountButton expanded={expanded} expandProgress={expandProgress} cardHeightSv={cardHeightSv} totalOtherCards={otherCards.length} onPress={onAddAccount} />
+      {/* Dot indicators */}
+      {cards.length > 1 && (
+        <View style={styles.dotsRow}>
+          {cards.map((c, i) => (
+            <View
+              key={c.account.id}
+              style={[
+                styles.dot,
+                i === activeIndex ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
       )}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  addBtn: {
+  root: {
+    alignItems: "center",
+  },
+
+  // ── Page ──
+  page: {
+    alignItems: "center",
+    paddingTop: 36,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+  },
+  accountLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+    marginBottom: 14,
+  },
+  accountLabelDot: {
+    color: "rgba(255,255,255,0.30)",
+  },
+
+  // ── Balance ──
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 28,
+  },
+  balanceSymbol: {
+    color: "#FFFFFF",
+    fontSize: 38,
+    fontWeight: "800",
+    letterSpacing: -1,
+    lineHeight: 58,
+    marginLeft: 4,
+  },
+  balanceInt: {
+    color: "#FFFFFF",
+    fontSize: 58,
+    fontWeight: "800",
+    letterSpacing: -2.5,
+    lineHeight: 64,
+  },
+  balanceCents: {
+    color: "rgba(255,255,255,0.60)",
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+    lineHeight: 40,
+    marginTop: 4,
+  },
+
+  // ── Accounts button ──
+  accountsBtn: {
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius: 22,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+  },
+  accountsBtnText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: 0.1,
+  },
+
+  // ── Dots ──
+  dotsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: DOT_GAP,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  dot: {
+    width: DOT_SIZE,
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2,
+  },
+  dotActive: {
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  dotInactive: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+
+  // ── Empty state ──
+  emptyBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 14,
+    paddingVertical: 28,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: PRIMARY + "40",
     borderStyle: "dashed",
   },
-  addBtnText: {
+  emptyBtnText: {
     fontSize: 14,
     fontWeight: "600",
   },
-  stackCardShadow: {
-    borderRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
+
+  // ── Skeleton ──
+  skeleton: {
+    alignItems: "center",
+    paddingVertical: 32,
+    gap: 16,
   },
-  stackShadowStrip: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 34,
+  skeletonLabel: {
+    width: 120,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  skeletonBalance: {
+    width: 200,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  skeletonBtn: {
+    width: 100,
+    height: 38,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.10)",
   },
 });

@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
+import { useTabScrollY } from "@/context/tab-scroll";
 import { useAlert } from "@/hooks/use-alert";
 import { useTransactionStore } from "@/store/use-transactions";
 import { formatCurrency, getTotalByType } from "@/utils/calculations";
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const { transactions, loading } = useTransactionStore();
   const [signingOut, setSigningOut] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const tabScrollY = useTabScrollY();
 
   const totalIncome = getTotalByType(transactions, "income");
   const totalExpense = getTotalByType(transactions, "expense");
@@ -77,9 +79,15 @@ export default function ProfileScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "transparent" }}>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        onScroll={(e) => { tabScrollY.value = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
         {/* ── Header ── */}
         <LinearGradient colors={["#1e1e1e", "#000000"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
           <View style={styles.circle1} />

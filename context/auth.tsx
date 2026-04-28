@@ -22,6 +22,7 @@ export interface UserProfile {
   photoBase64?: string | null;
   country?: string;
   currencyCode?: string;
+  backgroundImageId?: string | null;
 }
 
 interface AuthContextType {
@@ -32,7 +33,7 @@ interface AuthContextType {
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateUserProfile: (data: { displayName?: string; photoBase64?: string | null; country?: string; currencyCode?: string }) => Promise<void>;
+  updateUserProfile: (data: { displayName?: string; photoBase64?: string | null; country?: string; currencyCode?: string; backgroundImageId?: string | null }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -128,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (data: { displayName?: string; photoBase64?: string | null; country?: string; currencyCode?: string }) => {
+  const updateUserProfile = async (data: { displayName?: string; photoBase64?: string | null; country?: string; currencyCode?: string; backgroundImageId?: string | null }) => {
     if (!user) return;
     if (data.displayName !== undefined) {
       await updateProfile(user, { displayName: data.displayName.trim() });
@@ -153,6 +154,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setDoc(doc(db, "users", user.uid), { currencyCode }, { merge: true });
       setCurrentCurrencyCode(currencyCode);
       setUserProfile((prev) => ({ ...(prev ?? {}), currencyCode }));
+    }
+
+    if (data.backgroundImageId !== undefined) {
+      const backgroundImageId = data.backgroundImageId ?? null;
+      await setDoc(doc(db, "users", user.uid), { backgroundImageId }, { merge: true });
+      setUserProfile((prev) => ({ ...(prev ?? {}), backgroundImageId }));
     }
   };
 

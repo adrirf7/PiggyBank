@@ -1,17 +1,16 @@
-import { BankCard } from "@/components/bank-card";
 import { CategoryIcon } from "@/components/category-icon";
-import { CARD_THEMES, getCardTheme } from "@/constants/card-themes";
+import { Text } from "@/components/text";
+import { CARD_THEMES } from "@/constants/card-themes";
 import { Colors, PRIMARY } from "@/constants/theme";
 import { useAccount } from "@/context/account";
-import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Account } from "@/types";
+import { formatCurrency } from "@/utils/calculations";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { Text } from "@/components/text";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ACCOUNT_ICONS = [
@@ -34,17 +33,14 @@ export default function ManageAccountsScreen() {
   const router = useRouter();
   const colors = Colors.dark;
   const { accounts, addAccount, updateAccount, deleteAccount, maxAccounts } = useAccount();
-  const { user, userProfile } = useAuth();
   const { alert } = useAlert();
   const { transactions } = useTransactionStore();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editThemeId, setEditThemeId] = useState(CARD_THEMES[0].id);
   const [editIcon, setEditIcon] = useState("piggy-bank");
 
   const [newName, setNewName] = useState("");
-  const [newThemeId, setNewThemeId] = useState("flame");
   const [newIcon, setNewIcon] = useState("piggy-bank");
   const [saving, setSaving] = useState(false);
   const reachedAccountLimit = accounts.length >= maxAccounts;
@@ -53,7 +49,9 @@ export default function ManageAccountsScreen() {
     return new Map(
       accounts.map((account, idx) => {
         const isDefault = account.isDefault ?? idx === 0;
-        const accountTxs = transactions.filter((tx) => (isDefault ? !tx.accountId || tx.accountId === account.id : tx.accountId === account.id));
+        const accountTxs = transactions.filter((tx) =>
+          isDefault ? !tx.accountId || tx.accountId === account.id : tx.accountId === account.id,
+        );
         const income = { normal: 0, goal: 0 };
         const expense = { normal: 0, goal: 0 };
         for (const tx of accountTxs) {
@@ -65,9 +63,6 @@ export default function ManageAccountsScreen() {
           account.id,
           {
             balance: income.normal - expense.normal - income.goal + expense.goal,
-            totalIncome: income.normal,
-            totalExpense: expense.normal,
-            totalSaved: income.goal - expense.goal,
           },
         ];
       }),
@@ -77,7 +72,6 @@ export default function ManageAccountsScreen() {
   const startEdit = (account: Account) => {
     setEditingId(account.id);
     setEditName(account.name);
-    setEditThemeId(account.themeId);
     setEditIcon(account.icon || "piggy-bank");
   };
 
@@ -87,7 +81,7 @@ export default function ManageAccountsScreen() {
     if (!editingId || !editName.trim()) return;
     setSaving(true);
     try {
-      await updateAccount(editingId, { name: editName.trim(), themeId: editThemeId, icon: editIcon });
+      await updateAccount(editingId, { name: editName.trim(), icon: editIcon });
       setEditingId(null);
     } finally {
       setSaving(false);
@@ -102,9 +96,8 @@ export default function ManageAccountsScreen() {
     }
     setSaving(true);
     try {
-      await addAccount(newName.trim(), newThemeId, newIcon);
+      await addAccount(newName.trim(), CARD_THEMES[0].id, newIcon);
       setNewName("");
-      setNewThemeId("flame");
       setNewIcon("piggy-bank");
     } catch (error) {
       if (error instanceof Error && error.message === "MAX_ACCOUNTS_REACHED") {
@@ -118,23 +111,27 @@ export default function ManageAccountsScreen() {
   };
 
   const handleDelete = (account: Account) => {
-    alert("Eliminar cuenta", `Vas a eliminar "${account.name}". Se borrarán todas sus transacciones y aportaciones relacionadas. Esta acción no se puede deshacer.`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: async () => {
-          setSaving(true);
-          try {
-            await deleteAccount(account.id);
-          } catch {
-            alert("Error", "No se pudo eliminar la cuenta.");
-          } finally {
-            setSaving(false);
-          }
+    alert(
+      "Eliminar cuenta",
+      `Vas a eliminar "${account.name}". Se borrarán todas sus transacciones y aportaciones relacionadas. Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            setSaving(true);
+            try {
+              await deleteAccount(account.id);
+            } catch {
+              alert("Error", "No se pudo eliminar la cuenta.");
+            } finally {
+              setSaving(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
@@ -147,60 +144,50 @@ export default function ManageAccountsScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        {/* ── Create new account ────────────────────────────────── */}
-        {!editingId && <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 24 }]}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <Text style={[styles.sectionTitle, { color: colors.muted }]}>NUEVA CUENTA</Text>
-            <Text style={[styles.sectionTitle, { color: colors.muted }]}>
-              {accounts.length}/{maxAccounts}
-            </Text>
-          </View>
-
-          <Text style={[styles.label, { color: colors.muted }]}>Nombre</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-            placeholder="Nombre de la cuenta"
-            placeholderTextColor={colors.muted}
-            value={newName}
-            onChangeText={setNewName}
-            editable={!reachedAccountLimit && !saving}
-          />
-
-          <Text style={[styles.label, { color: colors.muted }]}>Diseño de tarjeta</Text>
-          <ThemePicker selectedId={newThemeId} onSelect={setNewThemeId} />
-          <Text style={[styles.label, { color: colors.muted }]}>Icono</Text>
-          <IconPicker selectedIcon={newIcon} onSelect={setNewIcon} />
-
-          {newName.trim().length > 0 && (
-            <View style={{ marginBottom: 16 }}>
-              <BankCard
-                theme={getCardTheme(newThemeId)}
-                accountName={newName.trim()}
-                balance={0}
-                totalIncome={0}
-                totalExpense={0}
-                totalSaved={0}
-                currencyCode={userProfile?.currencyCode}
-                accountIcon={newIcon}
-                userName={user?.displayName || undefined}
-                userCountry={userProfile?.country}
-              />
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Create new account ── */}
+        {!editingId && (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 24 }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={[styles.sectionTitle, { color: colors.muted }]}>NUEVA CUENTA</Text>
+              <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+                {accounts.length}/{maxAccounts}
+              </Text>
             </View>
-          )}
 
-          {reachedAccountLimit && <Text style={{ color: "#F59E0B", fontSize: 13, marginBottom: 12 }}>Has alcanzado el máximo de {maxAccounts} cuentas.</Text>}
+            <Text style={[styles.label, { color: colors.muted }]}>Nombre</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+              placeholder="Nombre de la cuenta"
+              placeholderTextColor={colors.muted}
+              value={newName}
+              onChangeText={setNewName}
+              editable={!reachedAccountLimit && !saving}
+            />
 
-          <Pressable
-            style={[styles.btn, { backgroundColor: PRIMARY, opacity: saving || !newName.trim() || reachedAccountLimit ? 0.5 : 1 }]}
-            onPress={handleCreate}
-            disabled={saving || !newName.trim() || reachedAccountLimit}
-          >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Crear cuenta</Text>
-          </Pressable>
-        </View>}
+            <Text style={[styles.label, { color: colors.muted }]}>Icono</Text>
+            <IconPicker selectedIcon={newIcon} onSelect={setNewIcon} />
 
-        {/* ── Existing accounts ─────────────────────────────────── */}
+            {reachedAccountLimit && (
+              <Text style={{ color: "#F59E0B", fontSize: 13, marginBottom: 12 }}>
+                Has alcanzado el máximo de {maxAccounts} cuentas.
+              </Text>
+            )}
+
+            <Pressable
+              style={[styles.btn, { backgroundColor: PRIMARY, opacity: saving || !newName.trim() || reachedAccountLimit ? 0.5 : 1 }]}
+              onPress={handleCreate}
+              disabled={saving || !newName.trim() || reachedAccountLimit}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Crear cuenta</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* ── Existing accounts ── */}
         {accounts.length > 0 ? (
           <View style={{ gap: 12, marginBottom: 24 }}>
             <Text style={[styles.sectionTitle, { color: colors.muted }]}>CUENTAS</Text>
@@ -217,27 +204,14 @@ export default function ManageAccountsScreen() {
                     placeholderTextColor={colors.muted}
                     autoFocus
                   />
-                  <Text style={[styles.label, { color: colors.muted }]}>Diseño</Text>
-                  <ThemePicker selectedId={editThemeId} onSelect={setEditThemeId} />
                   <Text style={[styles.label, { color: colors.muted }]}>Icono</Text>
                   <IconPicker selectedIcon={editIcon} onSelect={setEditIcon} />
-                  {/* Preview */}
-                  <View style={{ marginBottom: 16 }}>
-                    <BankCard
-                      theme={getCardTheme(editThemeId)}
-                      accountName={editName.trim() || account.name}
-                      balance={accountStatsById.get(account.id)?.balance ?? 0}
-                      totalIncome={accountStatsById.get(account.id)?.totalIncome ?? 0}
-                      totalExpense={accountStatsById.get(account.id)?.totalExpense ?? 0}
-                      totalSaved={accountStatsById.get(account.id)?.totalSaved ?? 0}
-                      currencyCode={userProfile?.currencyCode}
-                      accountIcon={editIcon}
-                      userName={user?.displayName || undefined}
-                      userCountry={userProfile?.country}
-                    />
-                  </View>
+
                   <View style={{ flexDirection: "row", gap: 10 }}>
-                    <Pressable style={[styles.btn, { flex: 1, backgroundColor: colors.buttonSecondary }]} onPress={cancelEdit}>
+                    <Pressable
+                      style={[styles.btn, { flex: 1, backgroundColor: colors.buttonSecondary }]}
+                      onPress={cancelEdit}
+                    >
                       <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>Cancelar</Text>
                     </Pressable>
                     <Pressable
@@ -250,25 +224,30 @@ export default function ManageAccountsScreen() {
                   </View>
                 </View>
               ) : (
-                /* ── Account card with edit button ── */
-                <View key={account.id} style={{ position: "relative" }}>
-                  <BankCard
-                    theme={getCardTheme(account.themeId)}
-                    accountName={account.name}
-                    balance={accountStatsById.get(account.id)?.balance ?? 0}
-                    totalIncome={accountStatsById.get(account.id)?.totalIncome ?? 0}
-                    totalExpense={accountStatsById.get(account.id)?.totalExpense ?? 0}
-                    totalSaved={accountStatsById.get(account.id)?.totalSaved ?? 0}
-                    currencyCode={userProfile?.currencyCode}
-                    accountIcon={account.icon}
-                    userName={user?.displayName || undefined}
-                    userCountry={userProfile?.country}
-                  />
-                  <Pressable style={[styles.editBtn, { backgroundColor: "rgba(0,0,0,0.45)" }]} onPress={() => startEdit(account)} hitSlop={8}>
-                    <Ionicons name="pencil" size={14} color="#fff" />
+                /* ── Account row ── */
+                <View key={account.id} style={[styles.accountRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={[styles.accountIconWrap, { backgroundColor: PRIMARY + "18" }]}>
+                    <CategoryIcon icon={account.icon ?? "piggy-bank"} size={20} color={PRIMARY} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accountName}>{account.name}</Text>
+                    <Text style={styles.accountBalance}>
+                      {formatCurrency(accountStatsById.get(account.id)?.balance ?? 0)}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => startEdit(account)}
+                    style={styles.accountEditBtn}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="pencil" size={15} color={colors.muted} />
                   </Pressable>
-                  <Pressable style={[styles.deleteBtn, { backgroundColor: "rgba(239,68,68,0.9)" }]} onPress={() => handleDelete(account)} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={14} color="#fff" />
+                  <Pressable
+                    onPress={() => handleDelete(account)}
+                    style={[styles.accountEditBtn, { marginLeft: 4 }]}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={15} color="#EF4444" />
                   </Pressable>
                 </View>
               ),
@@ -284,31 +263,16 @@ export default function ManageAccountsScreen() {
   );
 }
 
-function ThemePicker({ selectedId, onSelect }: { selectedId: string; onSelect: (id: string) => void }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        {CARD_THEMES.map((theme) => (
-          <Pressable
-            key={theme.id}
-            onPress={() => onSelect(theme.id)}
-            style={[styles.themeChip, { backgroundColor: theme.colors[0], borderColor: selectedId === theme.id ? theme.accentColor : "transparent" }]}
-          >
-            <View style={[styles.themeAccentDot, { backgroundColor: theme.accentColor }]} />
-            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{theme.name}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </ScrollView>
-  );
-}
-
 function IconPicker({ selectedIcon, onSelect }: { selectedIcon: string; onSelect: (icon: string) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
       <View style={{ flexDirection: "row", gap: 10 }}>
         {ACCOUNT_ICONS.map((icon) => (
-          <Pressable key={icon} onPress={() => onSelect(icon)} style={[styles.iconChip, selectedIcon === icon && styles.iconChipActive]}>
+          <Pressable
+            key={icon}
+            onPress={() => onSelect(icon)}
+            style={[styles.iconChip, selectedIcon === icon && styles.iconChipActive]}
+          >
             <CategoryIcon icon={icon} size={18} color="#fff" />
           </Pressable>
         ))}
@@ -361,20 +325,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 16,
   },
-  themeChip: {
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  themeAccentDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
   iconChip: {
     width: 40,
     height: 40,
@@ -393,24 +343,39 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  editBtn: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    width: 32,
-    height: 32,
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
     borderRadius: 16,
+    borderWidth: 1,
+  },
+  accountIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  deleteBtn: {
-    position: "absolute",
-    top: 14,
-    left: 14,
+  accountName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: -0.1,
+  },
+  accountBalance: {
+    color: "#606070",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  accountEditBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
 });

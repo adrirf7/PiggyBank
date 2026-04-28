@@ -1,28 +1,33 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
+import { getBackgroundImage } from "@/constants/background-images";
 import { Text } from "@/components/text";
 import Animated, {
   Easing,
   FadeInDown,
   FadeInLeft,
+  interpolateColor,
   runOnJS,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CardSwitcher } from "@/components/card-switcher";
+import { CardSwitcher, accountSliderNativeGesture } from "@/components/card-switcher";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import TransactionItem from "@/components/transaction-item";
-import { Colors, EXPENSE_COLOR, INCOME_COLOR, PRIMARY } from "@/constants/theme";
+import { Colors, PRIMARY } from "@/constants/theme";
 import { useAccount } from "@/context/account";
+import { useTabScrollY } from "@/context/tab-scroll";
 import { useAuth } from "@/context/auth";
 import { useAlert } from "@/hooks/use-alert";
 import { useCategoriesStore } from "@/store/use-categories";
@@ -30,7 +35,6 @@ import { useSavingsGoalStore } from "@/store/use-savings-goals";
 import { useTransactionStore } from "@/store/use-transactions";
 import { Transaction } from "@/types";
 import { compareTransactionsNewestFirst, formatCurrency } from "@/utils/calculations";
-
 
 export default function DashboardScreen() {
   const colors = Colors.dark;
@@ -41,13 +45,15 @@ export default function DashboardScreen() {
   const { allCategories } = useCategoriesStore();
   const { goals } = useSavingsGoalStore();
   const { accounts, activeAccount, activeAccountId, switchAccount, loading: accountsLoading } = useAccount();
+  const tabScrollY = useTabScrollY();
+  const insets = useSafeAreaInsets();
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ top: 300, right: 20 });
   const moreButtonRef = useRef<View>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ElementRef<typeof Animated.ScrollView>>(null);
 
   const clearSelection = useCallback(() => {
     setSelectionMode(false);
@@ -149,8 +155,9 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      tabScrollY.value = 0;
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: false }));
-    }, []),
+    }, [tabScrollY]),
   );
 
   useFocusEffect(useCallback(() => () => clearSelection(), [clearSelection]));
@@ -162,9 +169,12 @@ export default function DashboardScreen() {
     return "Buenas noches";
   }, []);
 
+  const bgImageSource = useMemo(
+    () => getBackgroundImage(userProfile?.backgroundImageId).source ?? null,
+    [userProfile?.backgroundImageId],
+  );
+
   const firstName = user?.displayName?.split(" ")[0] ?? null;
-  const today = format(new Date(), "EEEE, d MMMM", { locale: es });
-  const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1);
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -223,6 +233,11 @@ export default function DashboardScreen() {
     } catch { /* ignore */ }
   };
 
+  // ── Scroll → shared parallax value ───────────────────────────────────────────
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    tabScrollY.value = event.contentOffset.y;
+  });
+
   // ── Goal bar fill animation ───────────────────────────────────────────────────
   const goalBarSv = useSharedValue(0);
   useEffect(() => {
@@ -262,6 +277,17 @@ export default function DashboardScreen() {
     transform: [{ translateY: menuTranslateY.value }],
   }));
 
+  const hasBgImage = bgImageSource != null;
+  const bgScrollStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -tabScrollY.value }],
+  }));
+  const headerBgStyle = useAnimatedStyle(() => {
+    if (!hasBgImage) return {};
+    return {
+      backgroundColor: interpolateColor(tabScrollY.value, [0, 420], ["transparent", "#090909"]),
+    };
+  });
+
   const closeMoreMenu = () => {
     menuOpacity.value = withTiming(0, { duration: 120 }, () => runOnJS(setShowMoreMenu)(false));
     menuTranslateY.value = withTiming(-6, { duration: 120 });
@@ -269,42 +295,81 @@ export default function DashboardScreen() {
 
   const sectionTitleEnter = FadeInLeft.duration(400).delay(300).springify();
 
+  // Absorb horizontal swipes in the account section so the outer tab-pager pan
+  // never activates there. Inner GestureDetector gestures take priority over the
+  // outer navigator pan in RNGH, so once this activates the tab swipe fails.
+  // simultaneousWithExternalGesture keeps the FlatList scroll unaffected.
+  const accountAreaGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-8, 8])
+        .failOffsetY([-12, 12])
+        .simultaneousWithExternalGesture(accountSliderNativeGesture)
+        .onUpdate(() => {})
+        .onEnd(() => {}),
+    [],
+  );
+
   return (
     <View style={styles.root}>
+      {/* ── Background image — translates 1:1 with scroll so it feels native ── */}
+      {bgImageSource && (
+        <Animated.View style={[StyleSheet.absoluteFillObject, bgScrollStyle]} pointerEvents="none">
+          <Image source={bgImageSource} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <LinearGradient
+            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0)", "rgba(0,0,0,0.90)", "#090909", "#090909"]}
+            locations={[0, 0.18, 0.52, 0.65, 1]}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+        </Animated.View>
+      )}
+      {/* ── Header fade overlay — covers status bar + header, fades transparent→black ── */}
+      {hasBgImage && (
+        <Animated.View
+          style={[{ position: "absolute", top: 0, left: 0, right: 0, height: insets.top + 46 }, headerBgStyle]}
+          pointerEvents="none"
+        />
+      )}
       <SafeAreaView edges={["top"]} style={styles.safeArea}>
-        <ScrollView
+        {/* ── Header (fixed, outside scroll) ── */}
+        <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
+          <Animated.View entering={FadeInLeft.duration(400).delay(100).springify()}>
+            <Text style={styles.headerGreeting}>
+              {greeting}{firstName ? `, ${firstName}` : ""}
+            </Text>
+          </Animated.View>
+          <Animated.View style={avatarWiggleStyle}>
+            <Pressable style={styles.avatarBtn} onPress={() => router.push("/(tabs)/profile")}>
+              <Ionicons name="person" size={18} color={PRIMARY} />
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+
+        <Animated.ScrollView
           ref={scrollRef}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          style={styles.scrollView}
         >
-          {/* ── Header ── */}
-          <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.header}>
-            <Animated.View entering={FadeInLeft.duration(400).delay(100).springify()}>
-              <Text style={styles.headerDate}>{todayCapitalized}</Text>
-              <Text style={styles.headerGreeting}>
-                {greeting}{firstName ? `, ${firstName}` : ""}
-              </Text>
-            </Animated.View>
-            <Animated.View style={avatarWiggleStyle}>
-              <Pressable style={styles.avatarBtn} onPress={() => router.push("/(tabs)/profile")}>
-                <Ionicons name="person" size={18} color={PRIMARY} />
-              </Pressable>
-            </Animated.View>
-          </Animated.View>
-
           {/* ── Card Switcher ── */}
-          <Animated.View entering={FadeInDown.duration(600).delay(80).springify()} style={styles.section}>
-            <CardSwitcher
-              cards={cardData}
-              activeAccountId={activeAccountId}
-              onSelectAccount={switchAccount}
-              onAddAccount={() => router.push("/manage-accounts")}
-              currencyCode={userProfile?.currencyCode}
-              userName={firstName || user?.displayName || undefined}
-              userCountry={userProfile?.country}
-              isLoading={authLoading || accountsLoading}
-            />
-          </Animated.View>
+          <GestureDetector gesture={accountAreaGesture}>
+            <Animated.View entering={FadeInDown.duration(600).delay(80).springify()} style={styles.sectionFull}>
+              <CardSwitcher
+                cards={cardData}
+                activeAccountId={activeAccountId}
+                onSelectAccount={switchAccount}
+                onAddAccount={() => router.push("/manage-accounts")}
+                currencyCode={userProfile?.currencyCode}
+                userName={firstName || user?.displayName || undefined}
+                userCountry={userProfile?.country}
+                isLoading={authLoading || accountsLoading}
+              />
+            </Animated.View>
+          </GestureDetector>
 
           {/* ── 4 Quick Action Buttons ── */}
           <Animated.View entering={FadeInDown.duration(500).delay(160).springify()} style={styles.section}>
@@ -508,7 +573,7 @@ export default function DashboardScreen() {
               </>
             )}
           </Animated.View>
-        </ScrollView>
+        </Animated.ScrollView>
       </SafeAreaView>
 
       {/* ── More menu ── */}
@@ -528,6 +593,14 @@ export default function DashboardScreen() {
           >
             <Ionicons name="pricetags-outline" size={17} color="#FFFFFF" />
             <Text style={styles.moreItemText}>Personalizar categorías</Text>
+          </Pressable>
+          <View style={styles.moreDivider} />
+          <Pressable
+            style={styles.moreItem}
+            onPress={() => { closeMoreMenu(); setTimeout(() => router.push("/customize-profile"), 140); }}
+          >
+            <Ionicons name="color-palette-outline" size={17} color="#FFFFFF" />
+            <Text style={styles.moreItemText}>Personalizar perfil</Text>
           </Pressable>
         </Animated.View>
       )}
@@ -553,10 +626,14 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   safeArea: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: 120,
@@ -568,20 +645,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 22,
-    paddingTop: 14,
+    paddingTop: 8,
     paddingBottom: 8,
-  },
-  headerDate: {
-    color: "rgba(255,255,255,0.35)",
-    fontSize: 12,
-    fontWeight: "500",
-    letterSpacing: 0.2,
   },
   headerGreeting: {
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "700",
-    marginTop: 3,
     letterSpacing: -0.3,
   },
   avatarBtn: {
@@ -598,6 +668,10 @@ const styles = StyleSheet.create({
   section: {
     marginHorizontal: 20,
     marginTop: 16,
+  },
+  sectionFull: {
+    marginTop: 28,
+    marginBottom: 12,
   },
 
   // ── 4 Quick buttons ──

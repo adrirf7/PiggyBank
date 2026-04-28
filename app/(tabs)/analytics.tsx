@@ -5,6 +5,7 @@ import { es } from "date-fns/locale";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, NativeScrollEvent, NativeSyntheticEvent, NativeTouchEvent, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useTabScrollY } from "@/context/tab-scroll";
 import { Text } from "@/components/text";
 import Animated, { FadeInDown, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -76,6 +77,7 @@ export default function AnalyticsScreen() {
   const [mixedMode, setMixedMode] = useState<MixedMode>("expense-categories");
   const [isChartTouchActive, setIsChartTouchActive] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const tabScrollY = useTabScrollY();
 
   const filtered = useMemo(() => filterByPeriod(transactions, period, referenceDate), [transactions, period, referenceDate]);
   const {
@@ -333,9 +335,11 @@ export default function AnalyticsScreen() {
   }, []);
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (event.nativeEvent.contentOffset.y > 2) closeSelectors();
+      const y = event.nativeEvent.contentOffset.y;
+      tabScrollY.value = y;
+      if (y > 2) closeSelectors();
     },
-    [closeSelectors],
+    [closeSelectors, tabScrollY],
   );
   const toggleMonthXAxisModeBySwipe = useCallback(
     (direction: "left" | "right") => {
